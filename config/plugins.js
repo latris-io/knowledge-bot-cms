@@ -15,15 +15,9 @@ module.exports = ({ env }) => {
               secretAccessKey: env('AWS_ACCESS_SECRET'),
             },
             region: env('AWS_REGION'),
-            forcePathStyle: false,
             params: {
               Bucket: env('AWS_BUCKET_NAME'),
             },
-          },
-          uploadParams: () => {
-            return {
-              ACL: undefined, // <- Force NO ACL on upload call itself
-            };
           },
         },
       },
