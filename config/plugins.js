@@ -13,14 +13,14 @@ module.exports = ({ env }) => ({
             Bucket: env('AWS_BUCKET_NAME'),
           },
         },
-        uploadParams: (file) => {
-          return {
-            Bucket: env('AWS_BUCKET_NAME'),
-            Key: file.hash + file.ext,
-            ContentType: file.mime,
-            // 🚫 NO ACL SET HERE 🚫
-          };
-        },
+        uploadParams: (file) => ({
+          Bucket: env('AWS_BUCKET_NAME'),
+          Key: file.hash + file.ext,
+          Body: file.buffer,
+          ContentType: file.mime,
+          // 🚫 DO NOT set ACL at all 🚫
+          Metadata: {},
+        }),
       },
     },
   },
