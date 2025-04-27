@@ -15,10 +15,17 @@ module.exports = ({ env }) => {
               secretAccessKey: env('AWS_ACCESS_SECRET'),
             },
             region: env('AWS_REGION'),
+            forcePathStyle: false, // optional unless your bucket forces path-style access
             params: {
               Bucket: env('AWS_BUCKET_NAME'),
             },
           },
+          upload: {
+            // Disable ACL setting during upload
+            // This prevents S3 from rejecting the file
+            ACL: undefined,
+          },
+          // (Optional) download: {}, // could define future download config if needed
         },
       },
     },
