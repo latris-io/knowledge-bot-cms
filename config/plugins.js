@@ -1,3 +1,8 @@
+console.log('AWS_ACCESS_KEY_ID:', env('AWS_ACCESS_KEY_ID'));
+console.log('AWS_ACCESS_SECRET:', env('AWS_ACCESS_SECRET'));
+console.log('AWS_REGION:', env('AWS_REGION'));
+console.log('AWS_BUCKET_NAME:', env('AWS_BUCKET_NAME'));
+
 module.exports = ({ env }) => ({
   upload: {
     config: {
