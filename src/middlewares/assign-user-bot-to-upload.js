@@ -1,7 +1,7 @@
-// src/middlewares/assign-user-bot-to-upload.js
 'use strict';
 
 const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 
 module.exports = (config, { strapi }) => {
   return async (ctx, next) => {
@@ -50,7 +50,7 @@ module.exports = (config, { strapi }) => {
 
     console.log(`✅ Authenticated user ID ${user.id} assigned to bot ID ${user.bot.id}`);
 
-    // Set user and bot in fileInfo
+    // Set user and bot in fileInfo pre-upload
     let fileInfo = {};
     if (ctx.request.body.fileInfo) {
       try {
@@ -69,7 +69,7 @@ module.exports = (config, { strapi }) => {
 
     console.log('📝 fileInfo with user and bot:', fileInfo);
 
-    // Proceed to upload
+    // Proceed with upload
     await next();
 
     // After upload
@@ -87,29 +87,48 @@ module.exports = (config, { strapi }) => {
     }
 
     try {
-      // Update file with user and bot relations using ORM
-      await strapi.entityService.update(
-        'plugin::upload.file',
-        uploadedFile.id,
-        {
-          data: {
-            user: user.id,
-            bot: user.bot.id,
-          },
-        }
-      );
-      console.log(`📝 File ID ${uploadedFile.id} updated with user ID ${user.id} and bot ID ${user.bot.id}`);
+      console.log(`🔎 Fetching fresh file metadata for ID ${uploadedFile.id}`);
 
-      // Verify update
-      const updatedFile = await strapi.entityService.findOne(
+      // Fetch full file details from the database
+      const freshFile = await strapi.entityService.findOne(
         'plugin::upload.file',
         uploadedFile.id,
         { populate: ['user', 'bot'] }
       );
-      console.log('✅ Verified file after update:', JSON.stringify(updatedFile, null, 2));
+
+      if (!freshFile?.hash || !freshFile?.ext) {
+        console.error('🔴 Missing file metadata: hash or ext not populated.');
+        return ctx.throw(500, 'File metadata incomplete after upload.');
+      }
+
+      const extraUpdateData = {
+        user: user.id,
+        bot: user.bot.id,
+        source_type: 'manual_upload',
+        s3_key: `${freshFile.hash}${freshFile.ext}`,
+        document_uid: freshFile.document_uid || uuidv4(),
+      };
+
+      const mime = freshFile.mime || '';
+      if (mime.startsWith('audio/') || mime.startsWith('video/')) {
+        extraUpdateData.transcription_status = 'pending';
+      }
+
+      if (freshFile.folderPath) {
+        extraUpdateData.folderPath = freshFile.folderPath.replace(/\/+/g, '/');
+      }
+
+      await strapi.entityService.update(
+        'plugin::upload.file',
+        uploadedFile.id,
+        { data: extraUpdateData }
+      );
+
+      console.log('✅ File metadata updated successfully:', JSON.stringify(extraUpdateData, null, 2));
+
     } catch (err) {
-      console.error('🔴 Failed to update file relations:', err.message, err.stack);
-      return ctx.throw(500, 'Error updating file relations');
+      console.error('🔴 Failed to update file metadata:', err.message, err.stack);
+      return ctx.throw(500, 'Error updating file metadata');
     }
   };
 };
