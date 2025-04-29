@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "bots",
+  "info": {
+    "singularName": "bot",
+    "pluralName": "bots",
+    "displayName": "Bot",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "bot_id": {
+      "type": "uid",
+      "targetField": "name"
+    },
+    "files": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::upload.file",
+      "mappedBy": "bot"
+    },
+    "users": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::users-permissions.user",
+      "mappedBy": "bot"
+    }
+  }
+}

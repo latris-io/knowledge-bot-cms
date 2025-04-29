@@ -1,0 +1,128 @@
+{
+  "kind": "collectionType",
+  "collectionName": "files",
+  "info": {
+    "singularName": "file",
+    "pluralName": "files",
+    "displayName": "File",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "alternativeText": {
+      "type": "string"
+    },
+    "caption": {
+      "type": "string"
+    },
+    "width": {
+      "type": "integer"
+    },
+    "height": {
+      "type": "integer"
+    },
+    "formats": {
+      "type": "json"
+    },
+    "hash": {
+      "type": "string",
+      "required": true
+    },
+    "ext": {
+      "type": "string"
+    },
+    "mime": {
+      "type": "string",
+      "required": true
+    },
+    "size": {
+      "type": "decimal",
+      "required": true
+    },
+    "url": {
+      "type": "string",
+      "required": true
+    },
+    "previewUrl": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string",
+      "required": true
+    },
+    "provider_metadata": {
+      "type": "json"
+    },
+    "related": {
+      "type": "relation",
+      "relation": "morphToMany"
+    },
+    "folder": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::upload.folder",
+      "inversedBy": "files"
+    },
+    "folderPath": {
+      "type": "string",
+      "minLength": 1,
+      "required": true
+    },
+    "bot": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::bot.bot",
+      "inversedBy": "files"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "files"
+    },
+    "document_uid": {
+      "type": "uid",
+      "targetField": "name"
+    },
+    "s3_key": {
+      "type": "string"
+    },
+    "source_type": {
+      "type": "enumeration",
+      "enum": [
+        "manual_upload",
+        "connector"
+      ],
+      "default": "manual_upload"
+    },
+    "source_path": {
+      "type": "string"
+    },
+    "external_id": {
+      "type": "string"
+    },
+    "duration_seconds": {
+      "type": "integer"
+    },
+    "transcription_status": {
+      "type": "enumeration",
+      "enum": [
+        "n/a",
+        "pending",
+        "complete",
+        "error"
+      ],
+      "default": "n/a"
+    },
+    "transcript_location": {
+      "type": "string"
+    }
+  }
+}

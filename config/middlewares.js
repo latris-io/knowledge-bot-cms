@@ -9,4 +9,8 @@ module.exports = [
   'strapi::session',
   'strapi::favicon',
   'strapi::public',
+  {
+    name: 'global::assign-user-bot-to-upload',
+    config: {},
+  },
 ];
