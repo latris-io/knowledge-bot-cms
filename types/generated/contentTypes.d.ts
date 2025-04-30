@@ -682,11 +682,11 @@ export interface PluginUploadFile extends Struct.CollectionTypeSchema {
     provider_metadata: Schema.Attribute.JSON;
     publishedAt: Schema.Attribute.DateTime;
     related: Schema.Attribute.Relation<'morphToMany'>;
-    s3_key: Schema.Attribute.String;
     size: Schema.Attribute.Decimal & Schema.Attribute.Required;
     source_path: Schema.Attribute.String;
     source_type: Schema.Attribute.Enumeration<['manual_upload', 'connector']> &
       Schema.Attribute.DefaultTo<'manual_upload'>;
+    storage_key: Schema.Attribute.String;
     transcript_location: Schema.Attribute.String;
     transcription_status: Schema.Attribute.Enumeration<
       ['n/a', 'pending', 'complete', 'error']

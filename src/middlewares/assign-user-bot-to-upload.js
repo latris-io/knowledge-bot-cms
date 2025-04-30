@@ -105,7 +105,7 @@ module.exports = (config, { strapi }) => {
         user: user.id,
         bot: user.bot.id,
         source_type: 'manual_upload',
-        s3_key: `${freshFile.hash}${freshFile.ext}`,
+        storage_key: `${freshFile.hash}${freshFile.ext}`,
         document_uid: freshFile.document_uid || uuidv4(),
       };
 

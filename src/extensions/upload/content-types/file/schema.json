@@ -91,7 +91,7 @@
       "type": "uid",
       "targetField": "name"
     },
-    "s3_key": {
+    "storage_key": {
       "type": "string"
     },
     "source_type": {

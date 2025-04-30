@@ -76,6 +76,6 @@
       "relation": "oneToMany",
       "target": "plugin::upload.file",
       "mappedBy": "user"
-    }    
+    }
   }
 }
