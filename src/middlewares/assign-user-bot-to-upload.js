@@ -13,7 +13,6 @@ module.exports = (config, { strapi }) => {
 
     let user = null;
 
-    // Extract and verify JWT token
     const authHeader = ctx.request.header.authorization;
     if (authHeader?.startsWith('Bearer ')) {
       try {
@@ -29,7 +28,7 @@ module.exports = (config, { strapi }) => {
           user = await strapi.entityService.findOne(
             'plugin::users-permissions.user',
             decoded.id,
-            { populate: ['bot', 'company'] } // 👈 include company
+            { populate: ['bot', 'company'] }
           );
         }
       } catch (err) {
@@ -38,24 +37,13 @@ module.exports = (config, { strapi }) => {
       }
     }
 
-    if (!user?.id) {
-      console.warn('⚠️ No authenticated user found.');
-      return await next();
-    }
-
-    if (!user.bot?.id) {
-      console.warn('⚠️ User has no bot assigned:', user);
-      return await next();
-    }
-
-    if (!user.company?.id) {
-      console.warn('⚠️ User has no company assigned:', user);
+    if (!user?.id || !user.bot?.id || !user.company?.id) {
+      console.warn('⚠️ Missing user/bot/company info.');
       return await next();
     }
 
     console.log(`✅ Authenticated user ID ${user.id}, bot ID ${user.bot.id}, company ID ${user.company.id}`);
 
-    // Set user, bot, and company in fileInfo
     let fileInfo = {};
     if (ctx.request.body.fileInfo) {
       try {
@@ -68,15 +56,17 @@ module.exports = (config, { strapi }) => {
       }
     }
 
+    // Set both relations and flattened IDs
     fileInfo.user = user.id;
     fileInfo.bot = user.bot.id;
-    fileInfo.company = user.company.id; // 👈 set company
+    fileInfo.company = user.company.id;
+    fileInfo.user_id = user.id;
+    fileInfo.bot_id = user.bot.id;
+    fileInfo.company_id = user.company.id;
 
     ctx.request.body.fileInfo = JSON.stringify(fileInfo);
+    console.log('📝 fileInfo with flattened fields:', fileInfo);
 
-    console.log('📝 fileInfo with user, bot, company:', fileInfo);
-
-    // Proceed with upload
     await next();
 
     const { status, body } = ctx.response;
@@ -86,37 +76,31 @@ module.exports = (config, { strapi }) => {
     }
 
     const uploadedFile = Array.isArray(body) ? body[0] : body;
-
     if (!uploadedFile?.id) {
       console.error('🔴 Uploaded file missing ID:', uploadedFile);
       return;
     }
 
     try {
-      console.log(`🔎 Fetching fresh file metadata for ID ${uploadedFile.id}`);
-
       const freshFile = await strapi.entityService.findOne(
         'plugin::upload.file',
         uploadedFile.id,
-        { populate: ['user', 'bot', 'company'] } // 👈 populate company
+        { populate: ['user', 'bot', 'company'] }
       );
-
-      if (!freshFile?.hash || !freshFile?.ext) {
-        console.error('🔴 Missing file metadata: hash or ext not populated.');
-        return ctx.throw(500, 'File metadata incomplete after upload.');
-      }
 
       const extraUpdateData = {
         user: user.id,
         bot: user.bot.id,
-        company: user.company.id, // 👈 assign company again
+        company: user.company.id,
+        user_id: user.id,
+        bot_id: user.bot.id,
+        company_id: user.company.id,
         source_type: 'manual_upload',
         storage_key: `${freshFile.hash}${freshFile.ext}`,
         document_uid: freshFile.document_uid || uuidv4(),
       };
 
-      const mime = freshFile.mime || '';
-      if (mime.startsWith('audio/') || mime.startsWith('video/')) {
+      if (freshFile.mime?.startsWith('audio/') || freshFile.mime?.startsWith('video/')) {
         extraUpdateData.transcription_status = 'pending';
       }
 
@@ -131,11 +115,11 @@ module.exports = (config, { strapi }) => {
       );
 
       console.log('✅ File metadata updated successfully:', JSON.stringify(extraUpdateData, null, 2));
-
     } catch (err) {
-      console.error('🔴 Failed to update file metadata:', err.message, err.stack);
+      console.error('🔴 Failed to update file metadata:', err.message);
       return ctx.throw(500, 'Error updating file metadata');
     }
   };
 };
+
 

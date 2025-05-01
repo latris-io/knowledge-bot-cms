@@ -686,8 +686,10 @@ export interface PluginUploadFile extends Struct.CollectionTypeSchema {
   attributes: {
     alternativeText: Schema.Attribute.String;
     bot: Schema.Attribute.Relation<'manyToOne', 'api::bot.bot'>;
+    bot_id: Schema.Attribute.Integer;
     caption: Schema.Attribute.String;
     company: Schema.Attribute.Relation<'manyToOne', 'api::company.company'>;
+    company_id: Schema.Attribute.Integer;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -735,6 +737,7 @@ export interface PluginUploadFile extends Struct.CollectionTypeSchema {
       'manyToOne',
       'plugin::users-permissions.user'
     >;
+    user_id: Schema.Attribute.Integer;
     width: Schema.Attribute.Integer;
   };
 }

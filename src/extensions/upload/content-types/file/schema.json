@@ -129,6 +129,15 @@
       "relation": "manyToOne",
       "target": "api::company.company",
       "inversedBy": "files"
-    }
+    },
+    "bot_id": {
+      "type": "integer"
+    },
+    "company_id": {
+      "type": "integer"
+    },
+    "user_id": {
+      "type": "integer"
+    }    
   }
 }
