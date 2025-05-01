@@ -9,7 +9,7 @@ module.exports = (config, { strapi }) => {
       return await next();
     }
 
-    console.log('🚀 Assign user/bot middleware triggered at:', new Date().toISOString());
+    console.log('🚀 Assign user/bot/company middleware triggered at:', new Date().toISOString());
 
     let user = null;
 
@@ -29,7 +29,7 @@ module.exports = (config, { strapi }) => {
           user = await strapi.entityService.findOne(
             'plugin::users-permissions.user',
             decoded.id,
-            { populate: ['bot'] }
+            { populate: ['bot', 'company'] } // 👈 include company
           );
         }
       } catch (err) {
@@ -48,9 +48,14 @@ module.exports = (config, { strapi }) => {
       return await next();
     }
 
-    console.log(`✅ Authenticated user ID ${user.id} assigned to bot ID ${user.bot.id}`);
+    if (!user.company?.id) {
+      console.warn('⚠️ User has no company assigned:', user);
+      return await next();
+    }
 
-    // Set user and bot in fileInfo pre-upload
+    console.log(`✅ Authenticated user ID ${user.id}, bot ID ${user.bot.id}, company ID ${user.company.id}`);
+
+    // Set user, bot, and company in fileInfo
     let fileInfo = {};
     if (ctx.request.body.fileInfo) {
       try {
@@ -65,14 +70,15 @@ module.exports = (config, { strapi }) => {
 
     fileInfo.user = user.id;
     fileInfo.bot = user.bot.id;
+    fileInfo.company = user.company.id; // 👈 set company
+
     ctx.request.body.fileInfo = JSON.stringify(fileInfo);
 
-    console.log('📝 fileInfo with user and bot:', fileInfo);
+    console.log('📝 fileInfo with user, bot, company:', fileInfo);
 
     // Proceed with upload
     await next();
 
-    // After upload
     const { status, body } = ctx.response;
     if (status !== 201 || !body) {
       console.warn('⚠️ Upload did not succeed or response body missing:', { status, body });
@@ -89,11 +95,10 @@ module.exports = (config, { strapi }) => {
     try {
       console.log(`🔎 Fetching fresh file metadata for ID ${uploadedFile.id}`);
 
-      // Fetch full file details from the database
       const freshFile = await strapi.entityService.findOne(
         'plugin::upload.file',
         uploadedFile.id,
-        { populate: ['user', 'bot'] }
+        { populate: ['user', 'bot', 'company'] } // 👈 populate company
       );
 
       if (!freshFile?.hash || !freshFile?.ext) {
@@ -104,6 +109,7 @@ module.exports = (config, { strapi }) => {
       const extraUpdateData = {
         user: user.id,
         bot: user.bot.id,
+        company: user.company.id, // 👈 assign company again
         source_type: 'manual_upload',
         storage_key: `${freshFile.hash}${freshFile.ext}`,
         document_uid: freshFile.document_uid || uuidv4(),
@@ -132,3 +138,4 @@ module.exports = (config, { strapi }) => {
     }
   };
 };
+

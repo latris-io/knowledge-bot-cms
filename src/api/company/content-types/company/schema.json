@@ -1,11 +1,10 @@
 {
   "kind": "collectionType",
-  "collectionName": "bots",
+  "collectionName": "companies",
   "info": {
-    "singularName": "bot",
-    "pluralName": "bots",
-    "displayName": "Bot",
-    "description": ""
+    "singularName": "company",
+    "pluralName": "companies",
+    "displayName": "Company"
   },
   "options": {
     "draftAndPublish": true
@@ -15,22 +14,22 @@
       "type": "string",
       "required": true
     },
-    "bot_id": {
+    "company_id": {
       "type": "uid",
       "targetField": "name",
       "required": true
-    },
-    "files": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "plugin::upload.file",
-      "mappedBy": "bot"
     },
     "users": {
       "type": "relation",
       "relation": "oneToMany",
       "target": "plugin::users-permissions.user",
-      "mappedBy": "bot"
+      "mappedBy": "company"
+    },
+    "files": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "plugin::upload.file",
+      "mappedBy": "company"
     }
   }
 }
