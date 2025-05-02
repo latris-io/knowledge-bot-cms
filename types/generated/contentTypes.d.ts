@@ -693,6 +693,7 @@ export interface PluginUploadFile extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    deleted: Schema.Attribute.Boolean;
     document_uid: Schema.Attribute.UID<'name'>;
     duration_seconds: Schema.Attribute.Integer;
     ext: Schema.Attribute.String;
@@ -706,6 +707,7 @@ export interface PluginUploadFile extends Struct.CollectionTypeSchema {
     formats: Schema.Attribute.JSON;
     hash: Schema.Attribute.String & Schema.Attribute.Required;
     height: Schema.Attribute.Integer;
+    last_synced_at: Schema.Attribute.DateTime;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
