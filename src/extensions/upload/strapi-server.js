@@ -1,17 +1,16 @@
 'use strict';
 
 module.exports = (plugin) => {
-  const originalService = plugin.services.upload;
+  const originalUploadService = plugin.services.upload;
 
   plugin.services.upload = ({ strapi }) => {
-    const baseService = originalService({ strapi });
+    const baseService = originalUploadService({ strapi });
 
     return {
       ...baseService,
 
       async remove(file) {
         try {
-          // Soft-delete in DB
           await strapi.db.query('plugin::upload.file').update({
             where: { id: file.id },
             data: {
@@ -20,7 +19,6 @@ module.exports = (plugin) => {
             },
           });
 
-          // Also remove from S3 if needed
           const provider = strapi.plugins.upload.provider;
           if (provider && provider.delete) {
             await provider.delete(file);
@@ -33,15 +31,21 @@ module.exports = (plugin) => {
         }
       },
 
-      async findMany(params) {
+      async findMany(params = {}) {
+        strapi.log.debug('Custom upload.findMany called with params:', params);
         const results = await strapi.db.query('plugin::upload.file').findMany({
           ...params,
           where: { ...params.where, deleted: false },
         });
+        strapi.log.debug('Custom upload.findMany returned:', results.length, 'files');
         return results;
       },
     };
   };
 
+  // Ensure deleted files are hidden from Admin UI
+  plugin.controllers.upload = require('./controllers/upload');
+
   return plugin;
 };
+
