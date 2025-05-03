@@ -435,6 +435,39 @@ export interface ApiCompanyCompany extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiFileEventFileEvent extends Struct.CollectionTypeSchema {
+  collectionName: 'file_events';
+  info: {
+    displayName: 'File Event';
+    pluralName: 'file-events';
+    singularName: 'file-event';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    event_type: Schema.Attribute.Enumeration<
+      ['created', 'updated', 'deleted']
+    > &
+      Schema.Attribute.Required;
+    file: Schema.Attribute.Relation<'manyToOne', 'plugin::upload.file'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::file-event.file-event'
+    > &
+      Schema.Attribute.Private;
+    processed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface PluginContentReleasesRelease
   extends Struct.CollectionTypeSchema {
   collectionName: 'strapi_releases';
@@ -693,7 +726,6 @@ export interface PluginUploadFile extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    deleted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     document_uid: Schema.Attribute.UID<'name'>;
     duration_seconds: Schema.Attribute.Integer;
     ext: Schema.Attribute.String;
@@ -961,6 +993,7 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::bot.bot': ApiBotBot;
       'api::company.company': ApiCompanyCompany;
+      'api::file-event.file-event': ApiFileEventFileEvent;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;

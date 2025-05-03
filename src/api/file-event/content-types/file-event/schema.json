@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "file_events",
+  "info": {
+    "singularName": "file-event",
+    "pluralName": "file-events",
+    "displayName": "File Event"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "event_type": {
+      "type": "enumeration",
+      "enum": ["created", "updated", "deleted"],
+      "required": true
+    },
+    "file": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::upload.file"
+    },
+    "processed": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
+

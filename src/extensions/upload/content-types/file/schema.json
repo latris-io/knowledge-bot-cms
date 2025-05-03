@@ -141,10 +141,6 @@
     },
     "last_synced_at": {
       "type": "datetime"
-    },
-    "deleted": {
-      "type": "boolean",
-      "default": false
     }
   }
 }
