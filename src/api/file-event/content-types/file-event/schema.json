@@ -4,7 +4,8 @@
   "info": {
     "singularName": "file-event",
     "pluralName": "file-events",
-    "displayName": "File Event (Updated)"
+    "displayName": "File Event",
+    "description": ""
   },
   "options": {
     "draftAndPublish": false
@@ -12,7 +13,11 @@
   "attributes": {
     "event_type": {
       "type": "enumeration",
-      "enum": ["created", "updated", "deleted"],
+      "enum": [
+        "created",
+        "updated",
+        "deleted"
+      ],
       "required": true
     },
     "file": {
@@ -26,4 +31,3 @@
     }
   }
 }
-

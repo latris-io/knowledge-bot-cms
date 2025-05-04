@@ -438,7 +438,8 @@ export interface ApiCompanyCompany extends Struct.CollectionTypeSchema {
 export interface ApiFileEventFileEvent extends Struct.CollectionTypeSchema {
   collectionName: 'file_events';
   info: {
-    displayName: 'File Event (Updated)';
+    description: '';
+    displayName: 'File Event';
     pluralName: 'file-events';
     singularName: 'file-event';
   };
