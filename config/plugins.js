@@ -30,4 +30,7 @@ module.exports = ({ env }) => ({
       jwtSecret: env('JWT_SECRET'),
     },
   },
+  'document-service': {
+    enabled: false // Disable Document Service globally
+  },
 });

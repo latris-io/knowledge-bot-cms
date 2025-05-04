@@ -4,26 +4,28 @@
   "info": {
     "singularName": "file-event",
     "pluralName": "file-events",
-    "displayName": "File Event"
+    "displayName": "File Event",
+    "description": ""
   },
   "options": {
-    "draftAndPublish": false,
-    "documentService": false 
+    "draftAndPublish": false
   },
   "attributes": {
     "event_type": {
       "type": "enumeration",
-      "enum": ["created", "updated", "deleted"],
+      "enum": [
+        "created",
+        "updated",
+        "deleted"
+      ],
       "required": true
-    },
-    "file": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "plugin::upload.file"
     },
     "processed": {
       "type": "boolean",
       "default": false
+    },
+    "file_document_id": {
+      "type": "string"
     }
   }
 }

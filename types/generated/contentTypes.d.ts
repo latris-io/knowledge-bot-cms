@@ -454,7 +454,7 @@ export interface ApiFileEventFileEvent extends Struct.CollectionTypeSchema {
       ['created', 'updated', 'deleted']
     > &
       Schema.Attribute.Required;
-    file: Schema.Attribute.Relation<'manyToOne', 'plugin::upload.file'>;
+    file_document_id: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',

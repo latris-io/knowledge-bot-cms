@@ -97,6 +97,7 @@ module.exports = (config, { strapi }) => {
     }
 
     const uploadedFile = Array.isArray(body) ? body[0] : body;
+    console.log('📋 Full uploadedFile contents:', JSON.stringify(uploadedFile, null, 2));
     if (!uploadedFile?.id) {
       console.error('🔴 Uploaded file missing ID:', uploadedFile);
       return;
@@ -107,7 +108,7 @@ module.exports = (config, { strapi }) => {
     try {
       const eventData = {
         event_type: eventType,
-        file: uploadedFile.id,
+        file_document_id: uploadedFile.documentId,
         processed: false,
       };
       console.log('📝 Creating file-event with data:', eventData);

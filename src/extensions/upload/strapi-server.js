@@ -24,7 +24,7 @@ module.exports = (plugin) => {
           try {
             const eventData = {
               event_type: 'deleted',
-              file: fileId,
+              file_document_id: file.documentId,
               processed: false,
             };
             console.log('📝 Creating file-event with data:', eventData);
