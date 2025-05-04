@@ -4,7 +4,7 @@
   "info": {
     "singularName": "file-event",
     "pluralName": "file-events",
-    "displayName": "File Event"
+    "displayName": "File Event (Updated)"
   },
   "options": {
     "draftAndPublish": false
@@ -24,7 +24,6 @@
       "type": "boolean",
       "default": false
     }
-    
   }
 }
 
