@@ -13,37 +13,51 @@ module.exports = (plugin) => {
 
       async remove(file) {
         try {
-          strapi.log.debug('Custom upload.remove called for file:', {
-            id: file.id || file.documentId,
+          const fileId = file.id || file.documentId;
+          console.log('🚀 Custom upload.remove called for file:', {
+            id: fileId,
             name: file.name,
+            documentId: file.documentId,
           });
 
           // Log the deletion event for vector DB cleanup
-          await strapi.entityService.create('api::file-event.file-event', {
-            data: {
+          try {
+            const eventData = {
               event_type: 'deleted',
-              file: file.id,
+              file: fileId,
               processed: false,
-            },
-          });
+            };
+            console.log('📝 Creating file-event with data:', eventData);
+
+            await strapi.entityService.create('api::file-event.file-event', {
+              data: eventData,
+            });
+
+            console.log(`📦 File event (deleted) logged for file ID ${fileId}`);
+          } catch (eventError) {
+            console.error('🔴 Failed to log file event:', eventError.message, eventError.stack);
+            // Continue with deletion even if event logging fails
+          }
 
           // Remove from S3
           const provider = strapi.plugin('upload').provider;
           if (provider && typeof provider.delete === 'function') {
             await provider.delete(file);
-            strapi.log.debug(`Removed file ID ${file.id || file.documentId} from S3`);
+            console.log(`✅ Removed file ID ${fileId} from S3`);
+          } else {
+            console.warn('⚠️ No valid provider found for S3 deletion');
           }
 
           // Hard-delete from DB
           await strapi.db.query('plugin::upload.file').delete({
-            where: { id: file.id || file.documentId },
+            where: { id: fileId },
           });
 
-          strapi.log.debug(`✅ File ID ${file.id || file.documentId} hard-deleted from DB`);
+          console.log(`✅ File ID ${fileId} hard-deleted from DB`);
 
           return file;
         } catch (error) {
-          strapi.log.error(`🔴 Error hard-deleting file: ${error.message}`);
+          console.error('🔴 Error hard-deleting file:', error.message, error.stack);
           throw error;
         }
       },
