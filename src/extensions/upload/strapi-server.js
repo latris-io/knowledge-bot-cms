@@ -39,13 +39,15 @@ module.exports = (plugin) => {
             // Continue with deletion even if event logging fails
           }
 
-          // Remove from S3
+          // ✅ Remove file from S3
           const provider = strapi.plugin('upload').provider;
+
           if (provider && typeof provider.delete === 'function') {
-            await provider.delete(file);
-            console.log(`✅ Removed file ID ${fileId} from S3`);
+            const s3Key = file.storage_key || `${file.hash}${file.ext}`;
+            await provider.delete({ key: s3Key });
+            strapi.log.info(`✅ Removed file ID ${file.id} from S3 (key: ${s3Key})`);
           } else {
-            console.warn('⚠️ No valid provider found for S3 deletion');
+            strapi.log.warn('⚠️ S3 provider.delete is not available or invalid');
           }
 
           // Hard-delete from DB
