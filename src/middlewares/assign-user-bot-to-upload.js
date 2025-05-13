@@ -23,12 +23,10 @@ module.exports = (config, { strapi }) => {
     console.log('🔍 Query params:', ctx.query);
     console.log('🔍 Request body:', ctx.request.body);
 
-    // Detect replacement action (e.g., POST /upload?id=5)
     const isReplacement = !!ctx.query.id || ctx.request.body.ref || ctx.request.body.refId || ctx.request.body.field;
     const eventType = isReplacement ? 'updated' : 'created';
     console.log('📌 Event type:', eventType, '(isReplacement:', isReplacement, ', query.id:', ctx.query.id, ')');
 
-    // Authenticate user (for file metadata updates)
     let user = null;
     const authHeader = ctx.request.header.authorization;
     console.log('🔍 Authorization header:', authHeader ? 'Present' : 'Missing');
@@ -52,8 +50,7 @@ module.exports = (config, { strapi }) => {
           console.log('✅ Found user:', user ? { id: user.id, bot: user.bot?.id, company: user.company?.id } : 'null');
         }
       } catch (err) {
-        console.error('🔴 JWT verification failed:', err.message, err.stack);
-        // Continue to allow file-events logging
+        console.error('🔴 JWT verification failed:', err.message);
       }
     }
 
@@ -66,12 +63,10 @@ module.exports = (config, { strapi }) => {
           : ctx.request.body.fileInfo;
         console.log('📝 Parsed fileInfo:', fileInfo);
       } catch (error) {
-        console.error('🔴 Error parsing fileInfo:', error.message, error.stack);
-        // Continue to allow file-events logging
+        console.error('🔴 Error parsing fileInfo:', error.message);
       }
     }
 
-    // Add user data to fileInfo if available
     if (user) {
       fileInfo.user = user.id;
       fileInfo.bot = user.bot?.id;
@@ -87,7 +82,6 @@ module.exports = (config, { strapi }) => {
 
     await next();
 
-    // Check response
     const { status, body } = ctx.response;
     console.log('🔍 Response status:', status, 'body:', body);
 
@@ -102,28 +96,11 @@ module.exports = (config, { strapi }) => {
       console.error('🔴 Uploaded file missing ID:', uploadedFile);
       return;
     }
+
     console.log('✅ Uploaded file ID:', uploadedFile.id);
 
-    // Log file-events record
-    try {
-      const eventData = {
-        event_type: eventType,
-        file_document_id: uploadedFile.documentId,
-        processed: false,
-      };
-      console.log('📝 Creating file-event with data:', eventData);
-
-      await strapi.entityService.create('api::file-event.file-event', {
-        data: eventData,
-      });
-
-      console.log(`📦 File event (${eventType}) logged for file ID ${uploadedFile.id}`);
-    } catch (err) {
-      console.error('🔴 Failed to log file event:', err.message, err.stack);
-      // Don’t throw to avoid breaking the upload
-    }
-
-    // Update file metadata if user exists
+    // Update metadata first
+    let documentId = uploadedFile.documentId;
     if (user && user.bot?.id && user.company?.id) {
       try {
         const freshFile = await strapi.entityService.findOne(
@@ -152,19 +129,37 @@ module.exports = (config, { strapi }) => {
           extraUpdateData.folderPath = freshFile.folderPath.replace(/\/+/g, '/');
         }
 
-        await strapi.entityService.update(
+        const updatedFile = await strapi.entityService.update(
           'plugin::upload.file',
           uploadedFile.id,
           { data: extraUpdateData }
         );
 
+        documentId = updatedFile.documentId;
         console.log('✅ File metadata updated successfully:', extraUpdateData);
       } catch (err) {
-        console.error('🔴 Failed to update file metadata:', err.message, err.stack);
-        // Don’t throw to avoid breaking the upload
+        console.error('🔴 Failed to update file metadata:', err.message);
       }
     } else {
-      console.log('⚠️ Skipping file metadata update: Missing user or bot/company');
+      console.log('⚠️ Skipping metadata update: Missing user or bot/company');
+    }
+
+    // Log file event after metadata is fully updated
+    try {
+      const eventData = {
+        event_type: eventType,
+        file_document_id: documentId,
+        processed: false,
+      };
+      console.log('📝 Creating file-event with data:', eventData);
+
+      await strapi.entityService.create('api::file-event.file-event', {
+        data: eventData,
+      });
+
+      console.log(`📦 File event (${eventType}) logged for document ID: ${documentId}`);
+    } catch (err) {
+      console.error('🔴 Failed to log file event:', err.message);
     }
   };
 };
