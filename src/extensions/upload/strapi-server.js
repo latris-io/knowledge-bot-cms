@@ -40,7 +40,7 @@ module.exports = (plugin) => {
           }
 
           // ✅ Remove file from S3
-          const provider = strapi.plugins.upload.provider;
+          const provider = strapi.plugin('upload').provider;
 
           if (provider && typeof provider.delete === 'function') {
             await provider.delete(file); // ✅ Pass full file object
