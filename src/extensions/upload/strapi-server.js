@@ -76,7 +76,7 @@ module.exports = (plugin) => {
     };
   };
 
-  plugin.controllers.upload = require('./controllers/upload');
+  //plugin.controllers.upload = require('./controllers/upload');
 
   return plugin;
 };
