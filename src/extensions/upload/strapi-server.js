@@ -63,7 +63,7 @@ module.exports = (plugin) => {
 
         // Attempt S3 deletion
         try {
-          const s3Key = `${file.hash}${file.ext}`;
+          const s3Key = file.storage_key || `${file.hash}${file.ext}`;
           console.log(`[S3] 🗑️ Attempting to delete from bucket: ${process.env.AWS_BUCKET_NAME}, key: ${s3Key}`);
 
           const deleteResult = await s3.send(new DeleteObjectCommand({
