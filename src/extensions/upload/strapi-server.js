@@ -40,12 +40,11 @@ module.exports = (plugin) => {
           }
 
           // ✅ Remove file from S3
-          const provider = strapi.plugin('upload').provider;
+          const provider = strapi.plugins.upload.provider;
 
           if (provider && typeof provider.delete === 'function') {
-            const s3Key = file.storage_key || `${file.hash}${file.ext}`;
-            await provider.delete({ key: s3Key });
-            strapi.log.info(`✅ Removed file ID ${file.id} from S3 (key: ${s3Key})`);
+            await provider.delete(file); // ✅ Pass full file object
+            strapi.log.info(`✅ Removed file ID ${file.id} from S3 (key: ${file.hash}${file.ext})`);
           } else {
             strapi.log.warn('⚠️ S3 provider.delete is not available or invalid');
           }
