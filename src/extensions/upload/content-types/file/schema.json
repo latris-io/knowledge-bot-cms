@@ -141,6 +141,17 @@
     },
     "last_synced_at": {
       "type": "datetime"
+    },
+    "notification_sent": {
+      "type": "boolean",
+      "default": false
+    },
+    "last_notification_batch": {
+      "type": "uid"
+    },
+    "processing_metadata": {
+      "type": "json",
+      "default": {}
     }
   }
 }

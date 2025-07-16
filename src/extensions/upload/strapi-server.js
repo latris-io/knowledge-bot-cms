@@ -5,6 +5,37 @@ console.log('[INFO] Loading custom upload extension for Strapi v5.12.6');
 module.exports = (plugin) => {
   const defaultUploadService = plugin.services.upload;
 
+  // File extension validation is handled in the middleware
+
+  // Add notification message to upload response
+  if (plugin.controllers && plugin.controllers.upload) {
+    const originalUploadController = plugin.controllers.upload.upload;
+    plugin.controllers.upload.upload = async (ctx) => {
+      // Call the original upload controller
+      const result = await originalUploadController(ctx);
+      
+      // Add notification message to response
+      if (ctx.response.status === 201 && ctx.response.body) {
+        const files = Array.isArray(ctx.response.body) ? ctx.response.body : [ctx.response.body];
+        const fileCount = files.length;
+        const fileWord = fileCount === 1 ? 'file' : 'files';
+        
+        // Add notification message
+        ctx.response.body = {
+          data: ctx.response.body,
+          message: `✅ ${fileCount} ${fileWord} uploaded successfully! You will receive an email notification once your ${fileWord} ${fileCount === 1 ? 'has' : 'have'} been processed and ${fileCount === 1 ? 'is' : 'are'} ready for use by your AI bot.`,
+          notification: {
+            type: 'success',
+            title: 'Upload Complete',
+            message: `Your ${fileWord} will be processed shortly and you'll be notified via email when ready.`
+          }
+        };
+      }
+      
+      return result;
+    };
+  }
+
   plugin.services.upload = ({ strapi }) => {
     const baseService = defaultUploadService({ strapi });
     const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
@@ -23,10 +54,21 @@ module.exports = (plugin) => {
 
         // Log the deletion event
         try {
+          // Get file with populated relationships to extract user, bot, and company info
+          const fileWithRelations = await strapi.entityService.findOne(
+            'plugin::upload.file',
+            fileId,
+            { populate: ['user', 'bot', 'company'] }
+          );
+
           const eventData = {
             event_type: 'deleted',
             file_document_id: file.documentId,
             processed: false,
+            bot_id: fileWithRelations?.bot?.id || null,
+            company_id: fileWithRelations?.company?.id || null,
+            user_id: fileWithRelations?.user?.id || null,
+            file_name: file.name || null,
           };
           console.log('📝 Creating file-event with data:', eventData);
           await strapi.entityService.create('api::file-event.file-event', {

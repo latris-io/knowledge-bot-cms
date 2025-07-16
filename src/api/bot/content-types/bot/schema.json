@@ -31,6 +31,36 @@
       "relation": "oneToMany",
       "target": "plugin::users-permissions.user",
       "mappedBy": "bot"
+    },
+    "processing_enabled": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "auto_correction_enabled": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "max_retry_attempts": {
+      "type": "integer",
+      "default": 3,
+      "min": 0,
+      "max": 10,
+      "required": true
+    },
+    "retry_delay_minutes": {
+      "type": "integer",
+      "default": 5,
+      "min": 1,
+      "max": 60,
+      "required": true
+    },
+    "notification_preferences": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::user-notification-preference.user-notification-preference",
+      "mappedBy": "bot"
     }
   }
 }

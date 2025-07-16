@@ -381,6 +381,9 @@ export interface ApiBotBot extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
+    auto_correction_enabled: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<true>;
     bot_id: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -389,8 +392,35 @@ export interface ApiBotBot extends Struct.CollectionTypeSchema {
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::bot.bot'> &
       Schema.Attribute.Private;
+    max_retry_attempts: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 10;
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<3>;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    notification_preferences: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::user-notification-preference.user-notification-preference'
+    >;
+    processing_enabled: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<true>;
     publishedAt: Schema.Attribute.DateTime;
+    retry_delay_minutes: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 60;
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<5>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -416,6 +446,29 @@ export interface ApiCompanyCompany extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    default_batch_size_threshold: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<10>;
+    default_notification_delay_minutes: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 60;
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<5>;
+    default_notifications_enabled: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<true>;
     files: Schema.Attribute.Relation<'oneToMany', 'plugin::upload.file'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -424,6 +477,28 @@ export interface ApiCompanyCompany extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    notification_preferences: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::user-notification-preference.user-notification-preference'
+    >;
+    notification_quota_daily: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<100>;
+    notification_quota_monthly: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1000>;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -447,6 +522,8 @@ export interface ApiFileEventFileEvent extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    bot_id: Schema.Attribute.Integer;
+    company_id: Schema.Attribute.Integer;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -455,6 +532,7 @@ export interface ApiFileEventFileEvent extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Required;
     file_document_id: Schema.Attribute.String;
+    file_name: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -466,6 +544,72 @@ export interface ApiFileEventFileEvent extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    user_id: Schema.Attribute.Integer;
+  };
+}
+
+export interface ApiUserNotificationPreferenceUserNotificationPreference
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'user_notification_preferences';
+  info: {
+    description: 'User preferences for email notifications and processing settings';
+    displayName: 'User Notification Preferences';
+    pluralName: 'user-notification-preferences';
+    singularName: 'user-notification-preference';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    batch_size_threshold: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<5>;
+    bot: Schema.Attribute.Relation<'manyToOne', 'api::bot.bot'>;
+    company: Schema.Attribute.Relation<'manyToOne', 'api::company.company'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.Email;
+    email_format: Schema.Attribute.Enumeration<['html', 'text']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'html'>;
+    include_error_details: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    include_success_details: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::user-notification-preference.user-notification-preference'
+    > &
+      Schema.Attribute.Private;
+    notification_delay_minutes: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 1440;
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<30>;
+    notification_enabled: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<true>;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    > &
+      Schema.Attribute.Required;
   };
 }
 
@@ -740,6 +884,7 @@ export interface PluginUploadFile extends Struct.CollectionTypeSchema {
     formats: Schema.Attribute.JSON;
     hash: Schema.Attribute.String & Schema.Attribute.Required;
     height: Schema.Attribute.Integer;
+    last_notification_batch: Schema.Attribute.UID;
     last_synced_at: Schema.Attribute.DateTime;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -749,7 +894,10 @@ export interface PluginUploadFile extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     mime: Schema.Attribute.String & Schema.Attribute.Required;
     name: Schema.Attribute.String & Schema.Attribute.Required;
+    notification_sent: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     previewUrl: Schema.Attribute.String;
+    processing_metadata: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
     provider: Schema.Attribute.String & Schema.Attribute.Required;
     provider_metadata: Schema.Attribute.JSON;
     publishedAt: Schema.Attribute.DateTime;
@@ -952,12 +1100,24 @@ export interface PluginUsersPermissionsUser
         minLength: 6;
       }>;
     files: Schema.Attribute.Relation<'oneToMany', 'plugin::upload.file'>;
+    instructions: Schema.Attribute.Text &
+      Schema.Attribute.Configurable &
+      Schema.Attribute.SetPluginOptions<{
+        'content-manager': {
+          editable: false;
+          visible: true;
+        };
+      }>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'plugin::users-permissions.user'
     > &
       Schema.Attribute.Private;
+    notification_preferences: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::user-notification-preference.user-notification-preference'
+    >;
     password: Schema.Attribute.Password &
       Schema.Attribute.Private &
       Schema.Attribute.SetMinMaxLength<{
@@ -995,6 +1155,7 @@ declare module '@strapi/strapi' {
       'api::bot.bot': ApiBotBot;
       'api::company.company': ApiCompanyCompany;
       'api::file-event.file-event': ApiFileEventFileEvent;
+      'api::user-notification-preference.user-notification-preference': ApiUserNotificationPreferenceUserNotificationPreference;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;

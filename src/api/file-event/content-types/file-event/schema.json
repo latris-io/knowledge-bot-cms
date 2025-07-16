@@ -26,6 +26,18 @@
     },
     "file_document_id": {
       "type": "string"
+    },
+    "bot_id": {
+      "type": "integer"
+    },
+    "company_id": {
+      "type": "integer"
+    },
+    "user_id": {
+      "type": "integer"
+    },
+    "file_name": {
+      "type": "string"
     }
   }
 }

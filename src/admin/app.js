@@ -1,4 +1,4 @@
-import extensions from './extensions';
+import extensions from './extensions.js';
 
 export default {
   config: {

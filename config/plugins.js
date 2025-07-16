@@ -13,6 +13,8 @@ module.exports = ({ env }) => ({
             Bucket: env('AWS_BUCKET_NAME'),
           },
         },
+        // Add file extension restrictions - matching ingestion service supported formats
+        allowedExtensions: ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.xls', '.xlsx', '.ods', '.csv', '.ppt', '.pptx', '.odp', '.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.html', '.htm', '.md', '.markdown', '.zip', '.rar', '.7z'],
       },
       actionOptions: {
         upload: {

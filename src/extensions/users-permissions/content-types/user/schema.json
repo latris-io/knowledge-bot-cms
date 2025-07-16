@@ -82,6 +82,23 @@
       "relation": "manyToOne",
       "target": "api::company.company",
       "inversedBy": "users"
+    },
+    "notification_preferences": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::user-notification-preference.user-notification-preference",
+      "mappedBy": "user"
+    },
+    "instructions": {
+      "type": "text",
+      "required": false,
+      "configurable": true,
+      "pluginOptions": {
+        "content-manager": {
+          "visible": true,
+          "editable": false
+        }
+      }
     }
   }
 }

@@ -23,6 +23,41 @@ module.exports = (config, { strapi }) => {
     console.log('🔍 Query params:', ctx.query);
     console.log('🔍 Request body:', ctx.request.body);
 
+    // Check file extension restrictions
+    const uploadConfig = strapi.config.get('plugin.upload');
+    const allowedExtensions = uploadConfig?.providerOptions?.allowedExtensions;
+    
+    if (allowedExtensions) {
+      let fileName = null;
+      
+      // Check if file info is in request body (fileInfo JSON)
+      if (ctx.request.body && ctx.request.body.fileInfo) {
+        try {
+          const fileInfo = JSON.parse(ctx.request.body.fileInfo);
+          fileName = fileInfo.name;
+        } catch (e) {
+          console.log('🔴 Error parsing fileInfo:', e.message);
+        }
+      }
+      
+      // Check if files are in request.files
+      if (!fileName && ctx.request.files && ctx.request.files.files) {
+        const files = Array.isArray(ctx.request.files.files) ? ctx.request.files.files : [ctx.request.files.files];
+        if (files[0] && files[0].name) {
+          fileName = files[0].name;
+        }
+      }
+      
+      if (fileName) {
+        const fileExtension = require('path').extname(fileName).toLowerCase();
+        
+        if (!allowedExtensions.includes(fileExtension)) {
+          console.log(`🚫 File type '${fileExtension}' is not allowed. Allowed types: ${allowedExtensions.join(', ')}`);
+          return ctx.badRequest(`File type '${fileExtension}' is not allowed. Allowed types: ${allowedExtensions.join(', ')}`);
+        }
+      }
+    }
+
     const isReplacement = !!ctx.query.id || ctx.request.body.ref || ctx.request.body.refId || ctx.request.body.field;
     const eventType = isReplacement ? 'updated' : 'created';
     console.log('📌 Event type:', eventType, '(isReplacement:', isReplacement, ', query.id:', ctx.query.id, ')');
@@ -150,6 +185,10 @@ module.exports = (config, { strapi }) => {
         event_type: eventType,
         file_document_id: documentId,
         processed: false,
+        bot_id: user?.bot?.id || null,
+        company_id: user?.company?.id || null,
+        user_id: user?.id || null,
+        file_name: uploadedFile?.name || null,
       };
       console.log('📝 Creating file-event with data:', eventData);
 
@@ -158,6 +197,9 @@ module.exports = (config, { strapi }) => {
       });
 
       console.log(`📦 File event (${eventType}) logged for document ID: ${documentId}`);
+      
+      // Log notification message
+      console.log(`📧 User will receive email notification once "${uploadedFile?.name}" has been processed and is ready for use by their AI bot.`);
     } catch (err) {
       console.error('🔴 Failed to log file event:', err.message);
     }
