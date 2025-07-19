@@ -296,7 +296,126 @@ const AiChat = () => {
 
     setMessages(prev => [...prev, assistantMessage]);
 
+    // Add comprehensive markdown preprocessing function (from widget)
+    const parseMarkdown = (text) => {
+      if (!text) return '';
+      
+      console.log('[AI Chat] Input text for markdown processing:', text);
+      
+      // Preprocessing: Fix markdown structure issues (from widget)
+      let processedText = text;
+      
+      // Pattern: Ensure proper header separation (headers need double line breaks)
+      processedText = processedText.replace(
+        /([^\n])\n(### )/g,
+        '$1\n\n$2'
+      );
+      
+      // Pattern: Fix header directly followed by dashes (no line break)
+      processedText = processedText.replace(
+        /(### [^\n]+)-\s*\*\*/g,
+        '$1\n\n- **'
+      );
+      
+      // Pattern: Fix run-together list items (dash followed by bold item)
+      processedText = processedText.replace(
+        /(\*\*[^*]+\*\*[^-\n]*)-\s*\*\*/g,
+        '$1\n- **'
+      );
+      
+      // Pattern: Fix missing line breaks between list items
+      processedText = processedText.replace(
+        /(\*\*[^*]+\*\*[^\n]*\s+)-\s*\*\*/g,
+        '$1\n- **'
+      );
+      
+      // Pattern: Fix headers immediately following content (no line break)
+      processedText = processedText.replace(
+        /([^.\n])(### )/g,
+        '$1\n\n$2'
+      );
+      
+      // Pattern: Fix the specific issue from user's example
+      // "### Bell Meade Office Hours- **Monday**" → "### Bell Meade Office Hours\n\n- **Monday**"
+      processedText = processedText.replace(
+        /(### [^-\n]+)-\s*(\*\*[^*]+\*\*)/g,
+        '$1\n\n- $2'
+      );
+      
+      // Pattern: Fix time followed by header (e.g., "4:30pm### Additional")
+      processedText = processedText.replace(
+        /(\d+:\d+\w+)(### )/g,
+        '$1\n\n$2'
+      );
+      
+      // Pattern: Fix general run-together content with headers
+      processedText = processedText.replace(
+        /([a-zA-Z0-9.!?])(### )/g,
+        '$1\n\n$2'
+      );
+      
+      // Pattern: Ensure proper line breaks between list items
+      processedText = processedText.replace(
+        /(\n- [^\n]+[.!?])\s*(\n- )/g,
+        '$1\n$2'
+      );
+      
+      // Pattern: Fix missing line breaks between list items when they run together
+      processedText = processedText.replace(
+        /(\n- [^-\n]*[.!?])\s*- \*\*/g,
+        '$1\n- **'
+      );
+      
+      // Pattern: More aggressive list item separation - handle periods followed by dashes
+      processedText = processedText.replace(
+        /([.!?])-\s*\*\*/g,
+        '$1\n- **'
+      );
+      
+      // Pattern: Handle periods followed by text followed by dashes  
+      processedText = processedText.replace(
+        /([.!?])\s*([A-Z][^.!?]*[.!?])\s*-\s*\*\*/g,
+        '$1\n\n$2\n- **'
+      );
+      
+      // Pattern: List ending followed by bold text (common in our LLM output)
+      processedText = processedText.replace(
+        /(\n- [^\n]+\n+)(\*\*[^*]+\*\*:)/g,
+        '$1\n$2'
+      );
+      
+      // Pattern: Consecutive bold items need separation
+      processedText = processedText.replace(
+        /(\*\*[^*]+\*\*:[^\n]*\n+)(\*\*[^*]+\*\*:)/g,
+        '$1\n$2'
+      );
+      
+      // Pattern: Text followed by header needs proper separation
+      processedText = processedText.replace(
+        /([.!?])\s*(###)/g,
+        '$1\n\n$2'
+      );
+      
+      console.log('[AI Chat] Processed text after preprocessing:', processedText);
+      
+      try {
+        const result = md.render(processedText);
+        console.log('[AI Chat] Final HTML after markdown-it:', result);
+        return result;
+      } catch (error) {
+        console.warn('[AI Chat] Markdown parsing failed, using fallback:', error);
+        // Fallback: basic inline formatting only
+        return text
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+          .replace(/\n/g, '<br>');
+      }
+    };
+
     try {
+      console.log('[AI Chat] Making request to retrieval service...');
       const response = await fetch('https://knowledge-bot-retrieval.onrender.com/ask', {
         method: 'POST',
         headers: {
@@ -316,182 +435,145 @@ const AiChat = () => {
       }
 
       const contentType = response.headers.get('content-type');
+      console.log('[AI Chat] Response content type:', contentType);
 
-      // Handle different response types
+      // Handle different response types (like the widget)
       if (contentType && contentType.includes('text/event-stream') && response.body) {
-        console.log('[AI Chat] Processing streaming response');
-        let chunkCount = 0;
-        let allChunks = []; // Store all raw chunks
-
+        // Handle streaming response (like the widget)
+        console.log('[AI Chat] Handling streaming response');
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let chunkCount = 0;
+        let accumulatedText = '';
+        let responseStarted = false; // Track if actual response content has started
 
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-
-            if (done) {
-              console.log(`[AI Chat] Stream completed after ${chunkCount} chunks`);
-              console.log(`[AI Chat] Total chunks received: ${allChunks.length}`);
-              break;
-            }
-
-            const chunk = decoder.decode(value, { stream: true });
-            chunkCount++;
-            console.log(`[AI Chat] Chunk ${chunkCount}:`, JSON.stringify(chunk));
-
-            // Store raw chunk for final processing
-            allChunks.push(chunk);
-
-            // Just extract and accumulate raw text content for real-time display
-            // Don't try to process markdown structure during streaming
-            const lines = chunk.split('\n');
-            let chunkText = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            console.log(`[AI Chat] Stream completed after ${chunkCount} chunks`);
+            console.log(`[AI Chat] Final accumulated text length: ${accumulatedText.length}`);
+            console.log(`[AI Chat] Final accumulated text:`, accumulatedText);
             
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                if (!line.includes('[DONE]')) {
-                  const data = line.substring(6); // Remove "data: " prefix
-                  chunkText += data; // Just accumulate raw content
-                }
+            // Stream complete - now parse final markdown (like widget)
+            if (accumulatedText) {
+              console.log('[AI Chat] Stream complete, parsing final markdown');
+              
+              // Extract and deduplicate sources
+              const sourceMatches = [...accumulatedText.matchAll(/\[source: (.+?)\]/g)];
+              const allSources = sourceMatches.map(match => match[1]);
+              const uniqueSources = [...new Set(allSources)];
+              
+              // Remove sources but preserve line breaks - don't trim!
+              const cleanText = accumulatedText.replace(/\[source: .+?\]/g, "");
+              // Remove loading message but preserve line breaks - don't trim!
+              const contentText = cleanText.replace(/^Getting your response\.\.\.?\s*/, "");
+              
+              console.log('[AI Chat] Content for markdown parsing:', contentText);
+              
+              // Now parse the complete markdown using widget's preprocessing
+              const mainHtml = parseMarkdown(contentText);
+              
+              console.log('[AI Chat] Final HTML after parsing:', mainHtml);
+              
+              // Update message with final processed content
+              setMessages(prevMessages =>
+                prevMessages.map(msg =>
+                  msg.id === assistantMessage.id
+                    ? { 
+                        ...msg, 
+                        rawContent: '', // Clear raw content
+                        content: mainHtml, // Set formatted HTML
+                        sources: uniqueSources.map((src, idx) => ({ 
+                          id: idx + 1, 
+                          text: src, 
+                          title: src.length > 60 ? src.substring(0, 60) + '...' : src 
+                        })),
+                        isLoading: false 
+                      }
+                    : msg
+                )
+              );
+            } else {
+              console.log('[AI Chat] No accumulated text to parse');
+            }
+            
+            break;
+          }
+
+          chunkCount++;
+          const chunk = decoder.decode(value, { stream: true });
+          console.log(`[AI Chat] Chunk ${chunkCount}: "${chunk}"`);
+          
+          const lines = chunk.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6); // Remove 'data: ' prefix
+              if (data === '[DONE]' || !data.trim()) continue;
+              
+              // Simple accumulation like widget - no complex parsing during stream
+              if (data === '') {
+                accumulatedText += '\n'; // Empty data = newline
+              } else {
+                accumulatedText += data; // Regular data = content
+              }
+              
+              // Check if we have actual response content (like widget)
+              const cleanForCheck = accumulatedText.replace(/\[source: .+?\]/g, "").trim();
+              const hasActualContent = cleanForCheck.length > 0 && !cleanForCheck.startsWith("Getting your response");
+              
+              if (!responseStarted && hasActualContent) {
+                responseStarted = true;
+                console.log(`[AI Chat] Response content detected, showing streaming text`);
+              }
+              
+              if (responseStarted) {
+                // Show raw text while streaming (no markdown parsing yet) - like widget
+                const displayText = cleanForCheck.replace(/^Getting your response\.\.\.?\s*/, "");
+                
+                // Update raw content for real-time display during streaming
+                setMessages(prevMessages => 
+                  prevMessages.map(msg => 
+                    msg.id === assistantMessage.id
+                      ? { ...msg, rawContent: displayText }
+                      : msg
+                  )
+                );
               }
             }
-
-            // Update raw content for real-time display during streaming
-            setMessages(prevMessages => 
-              prevMessages.map(msg => 
-                msg.id === assistantMessage.id
-                  ? { ...msg, rawContent: (msg.rawContent || '') + chunkText }
-                  : msg
-              )
-            );
           }
-
-          // Now apply markdown formatting to the complete streamed text
-          console.log('[AI Chat] Stream complete, applying final markdown formatting');
-          
-          // Now process ALL chunks at once to get the complete text
-          let finalText = '';
-          
-          for (const chunk of allChunks) {
-            const lines = chunk.split('\n');
-            
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                if (!line.includes('[DONE]')) {
-                  const data = line.substring(6); // Remove "data: " prefix
-                  
-                                  if (data === '' || data.trim() === '') {
-                  // Empty data content OR whitespace-only data represents a newline in the original text
-                  finalText += '\n';
-                  } else {
-                    // Regular data content - concatenate as-is (spaces are already embedded)
-                    finalText += data;
-                  }
-                }
-              }
-            }
-          }
-          
-          console.log('[AI Chat] ✅ Final reconstructed text:');
-          console.log(finalText);
-          console.log('[AI Chat] ✅ Text length:', finalText.length);
-          console.log('[AI Chat] ✅ Line count:', finalText.split('\n').length);
-
-          // Now extract sources from the final complete text
-          const sources = [];
-          const sourceRegex = /\[source:\s*([^]]+)\]/g;
-          let match;
-          while ((match = sourceRegex.exec(finalText)) !== null) {
-            if (!sources.includes(match[1])) {
-              sources.push(match[1]);
-            }
-          }
-
-          // Remove source references from content for display
-          const contentWithoutSources = finalText.replace(sourceRegex, '').trim();
-          
-          console.log('[AI Chat] ✅ Content after source removal:');
-          console.log(contentWithoutSources);
-          
-          // Verify markdown structure looks correct
-          const lines = contentWithoutSources.split('\n');
-          console.log('[AI Chat] 🔍 Markdown structure analysis:');
-          lines.forEach((line, i) => {
-            if (line.startsWith('#')) {
-              console.log(`  Line ${i + 1}: HEADER -> "${line}"`);
-            } else if (line.startsWith('-') || line.startsWith('*')) {
-              console.log(`  Line ${i + 1}: LIST ITEM -> "${line}"`);
-            } else if (line.trim() === '') {
-              console.log(`  Line ${i + 1}: EMPTY LINE`);
-            } else if (line.trim().length > 0) {
-              console.log(`  Line ${i + 1}: TEXT -> "${line}"`);
-            }
-          });
-
-          // Apply markdown formatting to the complete final text
-          console.log('[AI Chat] 📝 Applying markdown-it processing...');
-          const processedHtml = md.render(contentWithoutSources);
-          
-          console.log('[AI Chat] ✅ Final HTML output:');
-          console.log(processedHtml);
-
-          // Update the message with final processed content
-          setMessages(prevMessages =>
-            prevMessages.map(msg =>
-              msg.id === assistantMessage.id
-                ? { 
-                    ...msg, 
-                    rawContent: '', // Clear raw content
-                    content: processedHtml, // Set formatted HTML
-                    sources: sources.map((src, idx) => ({ 
-                      id: idx + 1, 
-                      text: src, 
-                      title: src.length > 60 ? src.substring(0, 60) + '...' : src 
-                    })),
-                    isLoading: false 
-                  }
-                : msg
-            )
-          );
-          
-          // Refocus input field after streaming is complete
-          setTimeout(() => {
-            if (textareaRef.current) {
-              textareaRef.current.focus();
-            }
-          }, 100);
-
-        } catch (streamError) {
-          console.error('[AI Chat] Stream reading error:', streamError);
-          setMessages(prevMessages =>
-            prevMessages.map(msg =>
-              msg.id === assistantMessage.id
-                ? { ...msg, content: 'Error reading response stream', isLoading: false }
-                : msg
-            )
-          );
-        } finally {
-          reader.releaseLock();
         }
-      } else {
-        // Handle non-streaming JSON response
+        
+        // Refocus input field after streaming is complete
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+          }
+        }, 100);
+        
+      } else if (contentType && contentType.includes('application/json')) {
+        // Handle JSON response (like widget fallback)
+        console.log('[AI Chat] Handling JSON response');
         const data = await response.json();
-        console.log('🔍 Raw API Response:', data.response);
+        let raw = data.response || data.error || "No response.";
         
-        const sources = extractSources(data.response);
-        let cleanedText = data.response.replace(/\[source: .+?\]/g, '');
+        // Extract and deduplicate sources
+        const sourceMatches = [...raw.matchAll(/\[source: (.+?)\]/g)];
+        const allSources = sourceMatches.map(match => match[1]);
+        const uniqueSources = [...new Set(allSources)];
         
-        // Apply ONLY markdown-it processing - no regex manipulation
-        const finalHtml = renderMarkdown(cleanedText.trim());
+        // Remove [source: ...] from main text
+        raw = raw.replace(/\[source: .+?\]/g, "").trim();
+        
+        // Parse markdown to HTML using widget's preprocessing
+        const mainHtml = parseMarkdown(raw);
         
         setMessages(prevMessages =>
           prevMessages.map(msg =>
             msg.id === assistantMessage.id
               ? { 
                   ...msg, 
-                  content: finalHtml,
-                  sources: sources.map((src, idx) => ({ 
+                  content: mainHtml,
+                  sources: uniqueSources.map((src, idx) => ({ 
                     id: idx + 1, 
                     text: src, 
                     title: src.length > 60 ? src.substring(0, 60) + '...' : src 
