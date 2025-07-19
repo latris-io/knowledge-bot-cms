@@ -795,38 +795,7 @@ const AiChat = () => {
         zIndex: 1,
         height: 'calc(100vh - 40px)'
       }}>
-        {/* Holographic Top Border */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '2px',
-          background: `linear-gradient(90deg, 
-            transparent 0%, 
-            rgba(120, 119, 198, 0.6) 20%, 
-            rgba(255, 45, 85, 0.6) 40%, 
-            rgba(52, 199, 89, 0.6) 60%, 
-            rgba(255, 149, 0, 0.6) 80%, 
-            transparent 100%)`,
-          animation: 'holographicFlow 4s ease-in-out infinite alternate'
-        }} />
-        
-        {/* Holographic Bottom Border */}
-        <div style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: '1px',
-          background: `linear-gradient(90deg, 
-            transparent 0%, 
-            rgba(255, 149, 0, 0.4) 25%, 
-            rgba(52, 199, 89, 0.4) 50%, 
-            rgba(255, 45, 85, 0.4) 75%, 
-            transparent 100%)`,
-          animation: 'holographicFlow 4s ease-in-out infinite alternate-reverse'
-        }} />
+
         {/* Glassmorphism Header */}
         <div style={{
           padding: '32px 48px',
@@ -839,19 +808,7 @@ const AiChat = () => {
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
-          {/* Header Sweep Effect */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: '-100%',
-            width: '100%',
-            height: '100%',
-            background: `linear-gradient(90deg, 
-              transparent 0%, 
-              rgba(255, 255, 255, 0.08) 50%, 
-              transparent 100%)`,
-            animation: 'headerSweep 6s ease-in-out infinite'
-          }} />
+
 
           <div style={{ flex: 1 }}>
             <h1 style={{
@@ -1016,32 +973,7 @@ const AiChat = () => {
                 position: 'relative',
                 overflow: 'hidden'
               }}>
-                {/* Content Shimmer Effect */}
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: '-100%',
-                  width: '100%',
-                  height: '100%',
-                  background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%)',
-                  animation: 'contentShimmer 5s ease-in-out infinite'
-                }} />
-                
-                {/* Border Glow Effect */}
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '1px',
-                  background: `linear-gradient(90deg, 
-                    transparent 0%, 
-                    rgba(120, 119, 198, 0.3) 25%, 
-                    rgba(255, 45, 85, 0.3) 50%, 
-                    rgba(52, 199, 89, 0.3) 75%, 
-                    transparent 100%)`,
-                  animation: 'borderGlow 3s ease-in-out infinite alternate'
-                }} />
+
                 {message.isLoading ? (
                   <div style={{
                     display: 'flex',
@@ -1257,7 +1189,7 @@ const AiChat = () => {
                 background: isLoading || !input.trim() || !jwtToken || !user 
                   ? 'rgba(255, 255, 255, 0.2)' 
                   : 'linear-gradient(135deg, #7877c6 0%, #ff2d55 100%)',
-                border: 'none',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
                 borderRadius: '20px',
                 width: '40px',
                 height: '40px',
@@ -1270,23 +1202,10 @@ const AiChat = () => {
                 boxShadow: isLoading || !input.trim() || !jwtToken || !user
                   ? '0 2px 8px rgba(0, 0, 0, 0.2)'
                   : '0 4px 12px rgba(120, 119, 198, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
                 position: 'relative',
                 overflow: 'hidden',
                 flexShrink: 0
-              }}>
-                {/* Button Shine Effect */}
-                {!isLoading && input.trim() && jwtToken && user && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '-50%',
-                    left: '-50%',
-                    width: '200%',
-                    height: '200%',
-                    background: 'linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%)',
-                    animation: 'buttonShine 2s linear infinite'
-                  }} />
-                )}
+              }}
               onMouseEnter={(e) => {
                 if (!isLoading && input.trim() && jwtToken && user) {
                   e.currentTarget.style.background = 'linear-gradient(135deg, #8a89d0 0%, #ff4569 100%)';
@@ -1302,6 +1221,18 @@ const AiChat = () => {
                 }
               }}
             >
+              {/* Button Shine Effect */}
+              {!isLoading && input.trim() && jwtToken && user && (
+                <div style={{
+                  position: 'absolute',
+                  top: '-50%',
+                  left: '-50%',
+                  width: '200%',
+                  height: '200%',
+                  background: 'linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%)',
+                  animation: 'buttonShine 2s linear infinite'
+                }} />
+              )}
               {isLoading ? (
                 <div style={{
                   width: '16px',
