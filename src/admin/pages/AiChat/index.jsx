@@ -390,9 +390,18 @@ const AiChat = () => {
           const sources = extractSources(accumulatedText);
           let cleanedText = accumulatedText.replace(/\[source: .+?\]/g, '');
           
-          // Very conservative cleanup - only fix obvious issues
+          // Targeted fixes for common streaming reconstruction issues
           cleanedText = cleanedText
-            // Only normalize excessive whitespace, don't restructure
+            // Fix missing newlines before list items after colons
+            .replace(/(:\s*)(- \*\*)/g, '$1\n$2')  // Add newline after colon before list items
+            // Fix missing newlines before regular list items
+            .replace(/([^:\n])(- \*\*)/g, '$1\n$2')  // Add newline before list items
+            // Fix missing spaces after sentences
+            .replace(/([.!?])([A-Z])/g, '$1 $2')  // Add space after sentence endings
+            // Fix leftover punctuation from source removal
+            .replace(/\s+\.$/, '.')  // Remove extra spaces before final period
+            .replace(/sourced from\s*\.$/, 'sourced from the knowledge base.')  // Fix "sourced from ."
+            // Conservative whitespace normalization
             .replace(/[ ]{2,}/g, ' ')  // Multiple spaces to single space
             .replace(/\n{4,}/g, '\n\n\n')  // More than 3 newlines to 3 max
             .trim();
@@ -449,9 +458,18 @@ const AiChat = () => {
         const sources = extractSources(data.response);
         let cleanedText = data.response.replace(/\[source: .+?\]/g, '');
         
-        // Very conservative cleanup - only fix obvious issues
+        // Targeted fixes for common streaming reconstruction issues
         cleanedText = cleanedText
-          // Only normalize excessive whitespace, don't restructure
+          // Fix missing newlines before list items after colons
+          .replace(/(:\s*)(- \*\*)/g, '$1\n$2')  // Add newline after colon before list items
+          // Fix missing newlines before regular list items
+          .replace(/([^:\n])(- \*\*)/g, '$1\n$2')  // Add newline before list items
+          // Fix missing spaces after sentences
+          .replace(/([.!?])([A-Z])/g, '$1 $2')  // Add space after sentence endings
+          // Fix leftover punctuation from source removal
+          .replace(/\s+\.$/, '.')  // Remove extra spaces before final period
+          .replace(/sourced from\s*\.$/, 'sourced from the knowledge base.')  // Fix "sourced from ."
+          // Conservative whitespace normalization
           .replace(/[ ]{2,}/g, ' ')  // Multiple spaces to single space
           .replace(/\n{4,}/g, '\n\n\n')  // More than 3 newlines to 3 max
           .trim();
