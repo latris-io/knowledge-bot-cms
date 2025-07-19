@@ -227,19 +227,28 @@ const AiChat = () => {
   const processHtmlForGlasmorphism = (htmlContent) => {
     if (!htmlContent) return htmlContent;
     
-    // Remove problematic inline style properties that conflict with our glassmorphism theme
+    // More aggressive approach: completely strip all style attributes
+    // This ensures no inline styles can override our glassmorphism CSS
     let processedHtml = htmlContent
-      .replace(/color:\s*#[0-9a-fA-F]{3,6};?/g, '') // Remove color styles
-      .replace(/background-color:\s*[^;]+;?/g, '') // Remove background colors
-      .replace(/background:\s*[^;]+;?/g, '') // Remove background styles
-      .replace(/font-weight:\s*[^;]+;?/g, '') // Remove font-weight to use our styles
-      .replace(/font-size:\s*[^;]+;?/g, '') // Remove font-size to use our styles
-      .replace(/margin:\s*[^;]+;?/g, '') // Remove margin to use our styles
-      .replace(/padding:\s*[^;]+;?/g, '') // Remove padding to use our styles
-      .replace(/line-height:\s*[^;]+;?/g, '') // Remove line-height to use our styles
-      .replace(/letter-spacing:\s*[^;]+;?/g, '') // Remove letter-spacing to use our styles
-      .replace(/style="\s*"/g, '') // Remove empty style attributes
-      .replace(/style=''/g, ''); // Remove empty style attributes with single quotes
+      // Remove entire style attributes (most comprehensive approach)
+      .replace(/\s*style\s*=\s*"[^"]*"/gi, '')
+      .replace(/\s*style\s*=\s*'[^']*'/gi, '')
+      // Backup: remove specific problematic style properties (in case above misses some)
+      .replace(/color\s*:\s*[^;]+;?/gi, '')
+      .replace(/background(?:-color)?\s*:\s*[^;]+;?/gi, '')
+      .replace(/font-(?:weight|size)\s*:\s*[^;]+;?/gi, '')
+      .replace(/(?:margin|padding)\s*:\s*[^;]+;?/gi, '')
+      .replace(/line-height\s*:\s*[^;]+;?/gi, '')
+      .replace(/letter-spacing\s*:\s*[^;]+;?/gi, '')
+      // Clean up any remaining empty style attributes
+      .replace(/\s*style\s*=\s*['"]\s*['"]/gi, '')
+      // Clean up multiple spaces
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    console.log('🎨 [Glassmorphism] Original HTML length:', htmlContent.length);
+    console.log('🎨 [Glassmorphism] Processed HTML length:', processedHtml.length);
+    console.log('🎨 [Glassmorphism] Style attributes removed');
     
     return processedHtml;
   };
@@ -1306,6 +1315,13 @@ const AiChat = () => {
             letter-spacing: -0.02em !important;
           }
           
+          /* More specific selectors for better override */
+          div.message-content h1, div.message-content h2, div.message-content h3,
+          div.message-content h4, div.message-content h5, div.message-content h6 {
+            color: rgba(255, 255, 255, 0.95) !important;
+            font-weight: 600 !important;
+          }
+          
           .message-content h1 { font-size: 24px !important; }
           .message-content h2 { font-size: 20px !important; }
           .message-content h3 { font-size: 18px !important; }
@@ -1313,30 +1329,33 @@ const AiChat = () => {
           .message-content h5 { font-size: 15px !important; }
           .message-content h6 { font-size: 14px !important; }
           
-          .message-content p {
+          .message-content p, div.message-content p {
             color: rgba(255, 255, 255, 0.85) !important;
             line-height: 1.6 !important;
             margin: 12px 0 !important;
             font-size: 15px !important;
           }
           
-          .message-content strong, .message-content b {
+          .message-content strong, .message-content b,
+          div.message-content strong, div.message-content b {
             color: rgba(255, 255, 255, 0.95) !important;
             font-weight: 600 !important;
           }
           
-          .message-content em, .message-content i {
+          .message-content em, .message-content i,
+          div.message-content em, div.message-content i {
             color: rgba(255, 255, 255, 0.8) !important;
             font-style: italic !important;
           }
           
-          .message-content ul, .message-content ol {
+          .message-content ul, .message-content ol,
+          div.message-content ul, div.message-content ol {
             color: rgba(255, 255, 255, 0.85) !important;
             margin: 12px 0 !important;
             padding-left: 20px !important;
           }
           
-          .message-content li {
+          .message-content li, div.message-content li {
             color: rgba(255, 255, 255, 0.85) !important;
             margin: 6px 0 !important;
             line-height: 1.5 !important;
