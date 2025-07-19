@@ -347,11 +347,11 @@ const AiChat = () => {
                 if (!line.includes('[DONE]')) {
                   const data = line.substring(6); // Remove "data: " prefix
                   
+                  // Simply add each data piece exactly as received
+                  // Empty data represents newlines in the original structure
                   if (data === '') {
-                    // Empty data line represents a newline in original content
                     chunkText += '\n';
                   } else {
-                    // Add the text content
                     chunkText += data;
                   }
                 }
@@ -361,7 +361,7 @@ const AiChat = () => {
             if (chunkText) {
               accumulatedText += chunkText;
               
-              // Show raw text during streaming - NO PROCESSING AT ALL
+              // Show raw accumulated text during streaming - NO PROCESSING
               setMessages(prevMessages =>
                 prevMessages.map(msg =>
                   msg.id === assistantMessage.id
@@ -379,24 +379,17 @@ const AiChat = () => {
 
           // Process the complete text only after streaming is done
           console.log('[AI Chat] Stream complete, parsing final markdown');
+          console.log('[AI Chat] Raw accumulated text:', JSON.stringify(accumulatedText));
           
           // Extract sources and clean text
           const sources = extractSources(accumulatedText);
           let cleanedText = accumulatedText.replace(/\[source: .+?\]/g, '');
           
-          // Comprehensive markdown structure cleanup for streaming reconstruction
+          // Very conservative cleanup - only fix obvious issues
           cleanedText = cleanedText
-            // Ensure proper spacing around headers
-            .replace(/([^\n])(#{1,6}\s)/g, '$1\n\n$2')  // Add blank line before headers
-            .replace(/(#{1,6}[^\n]+)([^\n])/g, '$1\n$2')  // Add line after headers
-            // Ensure proper list formatting
-            .replace(/([^\n])(\s*-\s)/g, '$1\n$2')  // Add line before list items
-            .replace(/(-\s[^\n]+)([^\n-])/g, '$1\n$2')  // Add line after list items when needed
-            // Fix spacing issues from token reconstruction
-            .replace(/\s{2,}/g, ' ')  // Normalize multiple spaces to single
-            .replace(/\n{3,}/g, '\n\n')  // Normalize multiple blank lines
-            // Ensure proper paragraph breaks
-            .replace(/([.!?])\s*([A-Z])/g, '$1\n\n$2')  // Add paragraph breaks after sentences
+            // Only normalize excessive whitespace, don't restructure
+            .replace(/[ ]{2,}/g, ' ')  // Multiple spaces to single space
+            .replace(/\n{4,}/g, '\n\n\n')  // More than 3 newlines to 3 max
             .trim();
           
           console.log('[AI Chat] Content for markdown parsing:', cleanedText);
@@ -450,19 +443,11 @@ const AiChat = () => {
         const sources = extractSources(data.response);
         let cleanedText = data.response.replace(/\[source: .+?\]/g, '');
         
-        // Comprehensive markdown structure cleanup for streaming reconstruction
+        // Very conservative cleanup - only fix obvious issues
         cleanedText = cleanedText
-          // Ensure proper spacing around headers
-          .replace(/([^\n])(#{1,6}\s)/g, '$1\n\n$2')  // Add blank line before headers
-          .replace(/(#{1,6}[^\n]+)([^\n])/g, '$1\n$2')  // Add line after headers
-          // Ensure proper list formatting
-          .replace(/([^\n])(\s*-\s)/g, '$1\n$2')  // Add line before list items
-          .replace(/(-\s[^\n]+)([^\n-])/g, '$1\n$2')  // Add line after list items when needed
-          // Fix spacing issues from token reconstruction
-          .replace(/\s{2,}/g, ' ')  // Normalize multiple spaces to single
-          .replace(/\n{3,}/g, '\n\n')  // Normalize multiple blank lines
-          // Ensure proper paragraph breaks
-          .replace(/([.!?])\s*([A-Z])/g, '$1\n\n$2')  // Add paragraph breaks after sentences
+          // Only normalize excessive whitespace, don't restructure
+          .replace(/[ ]{2,}/g, ' ')  // Multiple spaces to single space
+          .replace(/\n{4,}/g, '\n\n\n')  // More than 3 newlines to 3 max
           .trim();
         
         // Apply ONLY markdown-it processing - CSS handles all styling
