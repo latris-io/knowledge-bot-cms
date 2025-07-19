@@ -510,38 +510,95 @@ const AiChat = () => {
               const data = line.slice(6); // Remove 'data: ' prefix
               if (data === '[DONE]' || !data.trim()) continue;
               
-              // Simple accumulation like widget - no complex parsing during stream
-              if (data === '') {
-                accumulatedText += '\n'; // Empty data = newline
-              } else {
-                accumulatedText += data; // Regular data = content
-              }
-              
-              // Check if we have actual response content (like widget)
-              const cleanForCheck = accumulatedText.replace(/\[source: .+?\]/g, "").trim();
-              const hasActualContent = cleanForCheck.length > 0 && !cleanForCheck.startsWith("Getting your response");
-              
-              if (!responseStarted && hasActualContent) {
-                responseStarted = true;
-                console.log(`[AI Chat] Response content detected, showing streaming text`);
-              }
-              
-              if (responseStarted) {
-                // Show raw text while streaming (no markdown parsing yet) - like widget
-                const displayText = cleanForCheck.replace(/^Getting your response\.\.\.?\s*/, "");
+              try {
+                // Parse JSON chunk (new structured format)
+                const chunkData = JSON.parse(data);
+                console.log(`[AI Chat] Parsed chunk:`, chunkData);
                 
-                // Update raw content for real-time display during streaming
-                setMessages(prevMessages => 
-                  prevMessages.map(msg => 
-                    msg.id === assistantMessage.id
-                      ? { ...msg, rawContent: displayText }
-                      : msg
-                  )
-                );
+                // Handle different chunk types
+                switch (chunkData.type) {
+                  case 'start':
+                    console.log(`[AI Chat] Stream started`);
+                    break;
+                    
+                  case 'content':
+                    if (chunkData.content) {
+                      accumulatedText += chunkData.content; // Extract just the content
+                      
+                      // Check if we have actual response content
+                      const cleanForCheck = accumulatedText.replace(/\[source: .+?\]/g, "").trim();
+                      const hasActualContent = cleanForCheck.length > 0 && !cleanForCheck.startsWith("Getting your response");
+                      
+                      if (!responseStarted && hasActualContent) {
+                        responseStarted = true;
+                        console.log(`[AI Chat] Response content detected (chunk type: ${chunkData.content_type}), showing streaming text`);
+                      }
+                      
+                      if (responseStarted) {
+                        // Show raw text while streaming (no markdown parsing yet)
+                        const displayText = cleanForCheck.replace(/^Getting your response\.\.\.?\s*/, "");
+                        
+                        // Update raw content for real-time display during streaming
+                        setMessages(prevMessages => 
+                          prevMessages.map(msg => 
+                            msg.id === assistantMessage.id
+                              ? { ...msg, rawContent: displayText }
+                              : msg
+                          )
+                        );
+                      }
+                    }
+                    break;
+                    
+                  case 'error':
+                    console.error(`[AI Chat] Stream error:`, chunkData.error);
+                    throw new Error(chunkData.error || 'Unknown streaming error');
+                    
+                  case 'end':
+                    console.log(`[AI Chat] Stream ended`);
+                    break;
+                    
+                  default:
+                    console.warn(`[AI Chat] Unknown chunk type: ${chunkData.type}`, chunkData);
+                }
+                
+              } catch (parseError) {
+                // Fallback: treat as raw text (backward compatibility)
+                console.warn(`[AI Chat] Failed to parse JSON chunk, treating as raw text:`, parseError);
+                console.log(`[AI Chat] Raw data:`, data);
+                
+                // Handle old format for backward compatibility
+                if (data === '') {
+                  accumulatedText += '\n'; // Empty data = newline
+                } else {
+                  accumulatedText += data; // Regular data = content
+                }
+                
+                // Check if we have actual response content (fallback mode)
+                const cleanForCheck = accumulatedText.replace(/\[source: .+?\]/g, "").trim();
+                const hasActualContent = cleanForCheck.length > 0 && !cleanForCheck.startsWith("Getting your response");
+                
+                if (!responseStarted && hasActualContent) {
+                  responseStarted = true;
+                  console.log(`[AI Chat] Response content detected (fallback mode), showing streaming text`);
+                }
+                
+                if (responseStarted) {
+                  // Show raw text while streaming (no markdown parsing yet)
+                  const displayText = cleanForCheck.replace(/^Getting your response\.\.\.?\s*/, "");
+                  
+                  // Update raw content for real-time display during streaming
+                  setMessages(prevMessages => 
+                    prevMessages.map(msg => 
+                      msg.id === assistantMessage.id
+                        ? { ...msg, rawContent: displayText }
+                        : msg
+                    )
+                  );
+                }
               }
             }
           }
-        }
         
         // Refocus input field after streaming is complete
         setTimeout(() => {
