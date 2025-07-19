@@ -392,6 +392,8 @@ const AiChat = () => {
           
           // Targeted fixes for common streaming reconstruction issues
           cleanedText = cleanedText
+            // Fix missing newlines before headers
+            .replace(/([^\n])(#{1,6}\s)/g, '$1\n\n$2')  // Add double newline before headers
             // Fix missing newlines before list items after colons
             .replace(/(:\s*)(- \*\*)/g, '$1\n$2')  // Add newline after colon before list items
             // Fix missing newlines before regular list items
@@ -460,6 +462,8 @@ const AiChat = () => {
         
         // Targeted fixes for common streaming reconstruction issues
         cleanedText = cleanedText
+          // Fix missing newlines before headers
+          .replace(/([^\n])(#{1,6}\s)/g, '$1\n\n$2')  // Add double newline before headers
           // Fix missing newlines before list items after colons
           .replace(/(:\s*)(- \*\*)/g, '$1\n$2')  // Add newline after colon before list items
           // Fix missing newlines before regular list items
