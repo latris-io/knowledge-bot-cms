@@ -606,7 +606,7 @@ const AiChat = () => {
             textareaRef.current.focus();
           }
         }, 100);
-        
+      
       } else if (contentType && contentType.includes('application/json')) {
         // Handle JSON response (like widget fallback)
         console.log('[AI Chat] Handling JSON response');
