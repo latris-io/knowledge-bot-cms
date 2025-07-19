@@ -354,13 +354,14 @@ const AiChat = () => {
                 if (!line.includes('[DONE]')) {
                   const data = line.substring(6); // Remove "data: " prefix
                   
-                  if (data === '') {
-                    // Track consecutive empty data lines for proper paragraph breaks
+                  // Check if data line is empty or just whitespace
+                  if (data.trim() === '') {
+                    // Track consecutive empty data lines for proper paragraph/line breaks
                     consecutiveEmptyLines++;
                   } else {
-                    // Add accumulated paragraph breaks before new content
+                    // Add accumulated line breaks before new content
                     if (consecutiveEmptyLines > 0) {
-                      // Multiple consecutive empty lines = paragraph break in markdown
+                      // Even single empty line should create proper separation for list items
                       if (consecutiveEmptyLines >= 2) {
                         chunkText += '\n\n'; // Double newline for paragraph break
                       } else {
