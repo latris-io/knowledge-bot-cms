@@ -346,10 +346,12 @@ const AiChat = () => {
               if (line.startsWith('data: ')) {
                 if (!line.includes('[DONE]')) {
                   const data = line.substring(6); // Remove "data: " prefix
-                  // Empty data lines represent newlines in the original markdown
+                  
                   if (data === '') {
+                    // Empty data line represents a newline in original content
                     chunkText += '\n';
                   } else {
+                    // Add the text content
                     chunkText += data;
                   }
                 }
@@ -359,7 +361,7 @@ const AiChat = () => {
             if (chunkText) {
               accumulatedText += chunkText;
               
-              // Update the message with raw text (no processing during streaming)
+              // Show raw text during streaming - NO PROCESSING AT ALL
               setMessages(prevMessages =>
                 prevMessages.map(msg =>
                   msg.id === assistantMessage.id
@@ -380,10 +382,26 @@ const AiChat = () => {
           
           // Extract sources and clean text
           const sources = extractSources(accumulatedText);
-          const cleanedText = accumulatedText.replace(/\[source: .+?\]/g, '');
+          let cleanedText = accumulatedText.replace(/\[source: .+?\]/g, '');
+          
+          // Comprehensive markdown structure cleanup for streaming reconstruction
+          cleanedText = cleanedText
+            // Ensure proper spacing around headers
+            .replace(/([^\n])(#{1,6}\s)/g, '$1\n\n$2')  // Add blank line before headers
+            .replace(/(#{1,6}[^\n]+)([^\n])/g, '$1\n$2')  // Add line after headers
+            // Ensure proper list formatting
+            .replace(/([^\n])(\s*-\s)/g, '$1\n$2')  // Add line before list items
+            .replace(/(-\s[^\n]+)([^\n-])/g, '$1\n$2')  // Add line after list items when needed
+            // Fix spacing issues from token reconstruction
+            .replace(/\s{2,}/g, ' ')  // Normalize multiple spaces to single
+            .replace(/\n{3,}/g, '\n\n')  // Normalize multiple blank lines
+            // Ensure proper paragraph breaks
+            .replace(/([.!?])\s*([A-Z])/g, '$1\n\n$2')  // Add paragraph breaks after sentences
+            .trim();
+          
           console.log('[AI Chat] Content for markdown parsing:', cleanedText);
 
-          // Apply HTML processing only to the final complete content
+          // Apply ONLY markdown-it processing - CSS handles all styling
           const finalHtml = renderMarkdown(cleanedText);
           console.log('[AI Chat] Final HTML after processing:', finalHtml);
 
@@ -430,7 +448,24 @@ const AiChat = () => {
         console.log('🔍 Raw API Response:', data.response);
         
         const sources = extractSources(data.response);
-        const cleanedText = data.response.replace(/\[source: .+?\]/g, '');
+        let cleanedText = data.response.replace(/\[source: .+?\]/g, '');
+        
+        // Comprehensive markdown structure cleanup for streaming reconstruction
+        cleanedText = cleanedText
+          // Ensure proper spacing around headers
+          .replace(/([^\n])(#{1,6}\s)/g, '$1\n\n$2')  // Add blank line before headers
+          .replace(/(#{1,6}[^\n]+)([^\n])/g, '$1\n$2')  // Add line after headers
+          // Ensure proper list formatting
+          .replace(/([^\n])(\s*-\s)/g, '$1\n$2')  // Add line before list items
+          .replace(/(-\s[^\n]+)([^\n-])/g, '$1\n$2')  // Add line after list items when needed
+          // Fix spacing issues from token reconstruction
+          .replace(/\s{2,}/g, ' ')  // Normalize multiple spaces to single
+          .replace(/\n{3,}/g, '\n\n')  // Normalize multiple blank lines
+          // Ensure proper paragraph breaks
+          .replace(/([.!?])\s*([A-Z])/g, '$1\n\n$2')  // Add paragraph breaks after sentences
+          .trim();
+        
+        // Apply ONLY markdown-it processing - CSS handles all styling
         const finalHtml = renderMarkdown(cleanedText);
         
         setMessages(prevMessages =>
