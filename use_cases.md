@@ -259,12 +259,14 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - **BR-021**: Token uses same secret as user lifecycle system
 - **BR-022**: Session IDs are prefixed with 'admin_' for admin interface
 - **BR-023**: Interface supports both JSON and streaming responses
-- **BR-024**: Sources are extracted from [source: ...] patterns
+- **BR-024**: Sources are extracted from [source: ...] patterns and trailing periods
 - **BR-025**: Markdown rendering supports headers, lists, bold, italic, code, and links
 - **BR-026**: Messages are displayed in chronological order
-- **BR-027**: Streaming responses show real-time updates
+- **BR-027**: Streaming responses show real-time updates with intelligent spacing between chunks
 - **BR-028**: Interface provides copy functionality for responses
 - **BR-029**: Input field auto-focuses on page load and after each response
+- **BR-030**: Intelligent spacing automatically adds spaces between sentence boundaries in streaming chunks
+- **BR-031**: Source reference regex handles trailing periods: `/\[source: .+?\]\.?/g`
 
 ---
 
@@ -295,8 +297,10 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - **JWT Token Generation**: Uses same secret and structure as user lifecycle hooks
 - **Session Management**: Maintains conversation state with localStorage
 - **Streaming Support**: Handles Server-Sent Events and JSON responses
+- **Intelligent Spacing**: Automatically detects sentence boundaries and adds spaces between chunks
 - **Markdown Rendering**: Uses markdown-it library with preprocessing
-- **Source Extraction**: Parses and deduplicates source references
+- **Source Extraction**: Parses and deduplicates source references with trailing period handling
+- **Performance Optimization**: Async textarea resize to prevent typing lag
 - **Error Handling**: Graceful fallbacks for network and API errors
 
 ### **Admin Menu Integration (`src/admin/app.js`)**
@@ -363,7 +367,10 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - **UC-002**: 8+ test cases covering toast notification functionality
 - **UC-003**: 6+ test cases covering JWT token generation
 - **UC-004**: 4+ test cases covering file upload processing
-- **UC-005**: 20+ test cases covering AI chat interface functionality
+- **UC-005**: 28+ test cases covering AI chat interface functionality including:
+  - Source extraction with trailing period handling (3 new tests)
+  - Intelligent spacing logic (4 new tests)
+  - Performance optimization scenarios
 
 ---
 

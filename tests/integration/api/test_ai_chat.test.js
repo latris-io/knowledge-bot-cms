@@ -4,7 +4,8 @@ const {
   mockStreamingResponse, 
   parseMarkdown, 
   extractSources, 
-  cleanText 
+  cleanText,
+  needsIntelligentSpacing
 } = require('../../helpers/chat-helpers');
 
 describe('UC-005: AI Chat Interface', () => {
@@ -173,6 +174,30 @@ describe('UC-005: AI Chat Interface', () => {
       const cleanedText = cleanText(input);
       
       expect(cleanedText).toBe('This is some text  and more text .');
+      expect(cleanedText).not.toContain('[source:');
+    });
+
+    test('should handle source references with trailing periods outside brackets', async () => {
+      const input = 'This information is sourced from [source: Lucas Offices.xlsx#2].';
+      const sources = extractSources(input);
+      const cleanedText = cleanText(input);
+      
+      expect(sources).toHaveLength(1);
+      expect(sources).toContain('Lucas Offices.xlsx#2');
+      expect(cleanedText).toBe('This information is sourced from');
+      expect(cleanedText).not.toContain('.');
+    });
+
+    test('should handle mixed source formats with and without trailing periods', async () => {
+      const input = 'Text [source: doc1.pdf] and [source: doc2.pdf]. More text [source: doc3.xlsx#1].';
+      const sources = extractSources(input);
+      const cleanedText = cleanText(input);
+      
+      expect(sources).toHaveLength(3);
+      expect(sources).toContain('doc1.pdf');
+      expect(sources).toContain('doc2.pdf');
+      expect(sources).toContain('doc3.xlsx#1');
+      expect(cleanedText).toBe('Text  and  More text');
       expect(cleanedText).not.toContain('[source:');
     });
   });
@@ -373,6 +398,44 @@ describe('UC-005: AI Chat Interface', () => {
       
       expect(streamingError['type']).toBe('streaming');
       expect(errorMessage).toContain('interrupted');
+    });
+  });
+
+  describe('TC-005-009: Intelligent Spacing Logic', () => {
+    test('should detect when space is needed between sentence boundaries', async () => {
+      const accumulatedText = 'Call us at 615-377-7777.';
+      const nextChunk = 'This information is sourced from';
+      
+      const needsSpace = needsIntelligentSpacing(accumulatedText, nextChunk);
+      
+      expect(needsSpace).toBe(true);
+    });
+
+    test('should not add space when chunks already have proper spacing', async () => {
+      const accumulatedText = 'Call us at 615-377-7777. ';
+      const nextChunk = 'This information is sourced from';
+      
+      const needsSpace = needsIntelligentSpacing(accumulatedText, nextChunk);
+      
+      expect(needsSpace).toBe(false);
+    });
+
+    test('should not add space for non-sentence boundaries', async () => {
+      const accumulatedText = 'Monday';
+      const nextChunk = ': 7:00 AM - 4:00 PM';
+      
+      const needsSpace = needsIntelligentSpacing(accumulatedText, nextChunk);
+      
+      expect(needsSpace).toBe(false);
+    });
+
+    test('should handle newlines properly in spacing logic', async () => {
+      const accumulatedText = 'Office Hours:\n';
+      const nextChunk = 'Monday: 7:00 AM - 4:00 PM';
+      
+      const needsSpace = needsIntelligentSpacing(accumulatedText, nextChunk);
+      
+      expect(needsSpace).toBe(false);
     });
   });
 }); 

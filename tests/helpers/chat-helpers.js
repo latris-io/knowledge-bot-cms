@@ -75,15 +75,29 @@ function parseMarkdown(text) {
  * Extract sources from text
  */
 function extractSources(text) {
-  const sourceMatches = [...text.matchAll(/\[source: (.+?)\]/g)];
+  const sourceMatches = [...text.matchAll(/\[source: (.+?)\]\.?/g)];
   return [...new Set(sourceMatches.map(match => match[1]))];
 }
 
 /**
- * Clean text by removing source tags
+ * Clean text by removing source tags and trailing periods
  */
 function cleanText(text) {
-  return text.replace(/\[source: .+?\]/g, "").trim();
+  return text.replace(/\[source: .+?\]\.?/g, "").trim();
+}
+
+/**
+ * Check if intelligent spacing is needed between chunks
+ * Matches the logic from the AI Chat component
+ */
+function needsIntelligentSpacing(accumulatedText, nextChunk) {
+  return accumulatedText.length > 0 &&
+    !accumulatedText.endsWith(' ') &&
+    !accumulatedText.endsWith('\n') &&
+    !nextChunk.startsWith(' ') &&
+    !nextChunk.startsWith('\n') &&
+    /[.!?]$/.test(accumulatedText.trim()) &&
+    /^[A-Z]/.test(nextChunk.trim());
 }
 
 module.exports = {
@@ -93,5 +107,6 @@ module.exports = {
   mockStreamingResponse,
   parseMarkdown,
   extractSources,
-  cleanText
+  cleanText,
+  needsIntelligentSpacing
 }; 
