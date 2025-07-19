@@ -182,11 +182,14 @@ const AiChat = () => {
     }
   };
 
-  // Auto-resize textarea function (moved out of useEffect for better performance)
+  // Optimized auto-resize function with CSS constraints
   const resizeTextarea = () => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
+      const textarea = textareaRef.current;
+      // Reset to auto to get accurate scrollHeight
+      textarea.style.height = 'auto';
+      // Apply height with CSS max constraint
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
     }
   };
 
@@ -1249,7 +1252,7 @@ const AiChat = () => {
               value={input}
               onChange={(e) => {
                 setInput(e.target.value);
-                // Resize textarea immediately for smooth typing experience
+                // Minimal JS for auto-resize - CSS handles constraints
                 setTimeout(resizeTextarea, 0);
               }}
               onKeyPress={handleKeyPress}
