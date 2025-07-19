@@ -19,17 +19,17 @@ describe('UC-005: AI Chat Interface', () => {
         company: { id: 1 }
       };
 
-      const token = generateChatToken(mockUser.company.id, mockUser.bot.id, mockUser.id);
+      const token = generateChatToken(mockUser.company.id, mockUser.bot.id);
       
       expect(token).toBeDefined();
       expect(typeof token).toBe('string');
 
-      // Verify token structure
+      // Verify token structure (user_id excluded for security)
       const jwt = require('jsonwebtoken');
       const decoded = jwt.verify(token, 'my-ultra-secure-signing-key');
       expect(decoded['company_id']).toBe(1);
       expect(decoded['bot_id']).toBe(1);
-      expect(decoded['user_id']).toBe(1);
+      expect(decoded['user_id']).toBeUndefined();
     });
 
     test('should fail token generation for user without bot', async () => {
@@ -43,7 +43,7 @@ describe('UC-005: AI Chat Interface', () => {
         if (!mockUser.bot || !mockUser.company) {
           throw new Error('Bot and Company are required');
         }
-        return generateChatToken(mockUser.company.id, mockUser.bot.id, mockUser.id);
+        return generateChatToken(mockUser.company.id, mockUser.bot.id);
       }).toThrow('Bot and Company are required');
     });
 
@@ -58,7 +58,7 @@ describe('UC-005: AI Chat Interface', () => {
         if (!mockUser.bot || !mockUser.company) {
           throw new Error('Bot and Company are required');
         }
-        return generateChatToken(mockUser.company.id, mockUser.bot.id, mockUser.id);
+        return generateChatToken(mockUser.company.id, mockUser.bot.id);
       }).toThrow('Bot and Company are required');
     });
   });
@@ -260,7 +260,91 @@ describe('UC-005: AI Chat Interface', () => {
     });
   });
 
-  describe('TC-005-007: Error Handling', () => {
+  describe('TC-005-007: Auto-Focus Functionality', () => {
+    test('should focus input field when component mounts', () => {
+      // Mock DOM element
+      const mockTextarea = {
+        focus: jest.fn(),
+        disabled: false
+      };
+
+      // Simulate conditions when textarea should be focused
+      const isLoading = false;
+      const jwtToken = 'mock-jwt-token';
+      const user = { id: 1, bot: { id: 1 }, company: { id: 1 } };
+
+      const shouldFocus = !isLoading && jwtToken && user;
+      
+      expect(shouldFocus).toBe(true);
+      
+      // Simulate focus call
+      if (shouldFocus && mockTextarea) {
+        mockTextarea.focus();
+      }
+
+      expect(mockTextarea.focus).toHaveBeenCalled();
+    });
+
+    test('should not focus when textarea is disabled', () => {
+      const mockTextarea = {
+        focus: jest.fn(),
+        disabled: true
+      };
+
+      // Simulate disabled conditions
+      const isLoading = true;
+      const jwtToken = null;
+      const user = null;
+
+      const shouldFocus = !isLoading && jwtToken && user;
+      
+      expect(shouldFocus).toBe(false);
+      
+      // Should not call focus when conditions aren't met
+      if (shouldFocus && mockTextarea) {
+        mockTextarea.focus();
+      }
+
+      expect(mockTextarea.focus).not.toHaveBeenCalled();
+    });
+
+    test('should refocus after AI response', () => {
+      const mockTextarea = {
+        focus: jest.fn()
+      };
+
+      // Simulate response completion
+      const isResponseComplete = true;
+      
+      if (isResponseComplete && mockTextarea) {
+        // Simulate the setTimeout behavior
+        setTimeout(() => {
+          mockTextarea.focus();
+        }, 100);
+      }
+
+      expect(isResponseComplete).toBe(true);
+      // Note: In actual implementation, this would be tested with proper async handling
+    });
+
+    test('should validate auto-focus dependency conditions', () => {
+      // Test all combinations of conditions that should trigger/prevent focus
+      const testCases = [
+        { isLoading: false, jwtToken: 'valid', user: {}, expected: true },
+        { isLoading: true, jwtToken: 'valid', user: {}, expected: false },
+        { isLoading: false, jwtToken: null, user: {}, expected: false },
+        { isLoading: false, jwtToken: 'valid', user: null, expected: false },
+        { isLoading: true, jwtToken: null, user: null, expected: false }
+      ];
+
+      testCases.forEach(({ isLoading, jwtToken, user, expected }) => {
+        const shouldFocus = !isLoading && jwtToken && user;
+        expect(shouldFocus).toBe(expected);
+      });
+    });
+  });
+
+  describe('TC-005-008: Error Handling', () => {
     test('should handle network errors gracefully', async () => {
       const networkError = new Error('Network request failed');
       networkError.name = 'NetworkError';

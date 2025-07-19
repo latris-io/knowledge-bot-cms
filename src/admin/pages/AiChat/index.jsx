@@ -864,20 +864,7 @@ const AiChat = () => {
             }}>
               AI Assistant
             </h1>
-            <div style={{
-              fontSize: '14px',
-              fontWeight: '500',
-              color: 'rgba(255, 255, 255, 0.6)',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              textAlign: 'center',
-              marginTop: '8px',
-              position: 'relative',
-              zIndex: 1
-            }}>
-              Vision Pro Max Ultra
-            </div>
-            
+                        
             <div style={{
               display: 'flex',
               justifyContent: 'center',

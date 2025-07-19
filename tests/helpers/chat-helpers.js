@@ -4,13 +4,13 @@ const JWT_SECRET = 'my-ultra-secure-signing-key';
 
 /**
  * Generate JWT token for AI chat
+ * Note: user_id excluded for security reasons
  */
-function generateChatToken(companyId, botId, userId) {
+function generateChatToken(companyId, botId) {
   return jwt.sign(
     { 
       company_id: companyId, 
-      bot_id: botId,
-      user_id: userId
+      bot_id: botId
     },
     JWT_SECRET,
     { algorithm: 'HS256' }

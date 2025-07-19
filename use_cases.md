@@ -203,7 +203,7 @@ System processes file uploads and automatically assigns them to users with bot a
 ### **UC-005: AI Chat Interface**
 
 #### **Description**
-System provides a ChatGPT-like interface within the Strapi admin panel that allows users to interact with their knowledge base using natural language queries. The interface automatically generates JWT tokens based on the user's assigned bot and company, maintains conversation sessions, and supports real-time streaming responses.
+System provides a ChatGPT-like interface within the Strapi admin panel that allows users to interact with their knowledge base using natural language queries. The interface automatically generates JWT tokens based on the user's assigned bot and company, maintains conversation sessions, supports real-time streaming responses, and includes auto-focus functionality for seamless user experience.
 
 #### **Actors**
 - **Primary**: System Administrator
@@ -222,7 +222,8 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 4. System creates or retrieves session ID for conversation continuity
 5. **If JWT token generation succeeds**:
    - Chat interface is enabled
-   - Administrator can type questions in the input field
+   - Input field automatically receives focus for immediate typing
+   - Administrator can start typing questions without clicking in input field
    - System displays "How can I help you today?" welcome message
 6. **When Administrator sends a message**:
    - System adds user message to conversation
@@ -232,6 +233,7 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
    - System extracts sources from response and displays them
    - System renders markdown-formatted response
    - System updates conversation with final response
+   - Input field automatically refocuses for next question
 7. **Session Management**:
    - Session ID is stored in localStorage
    - Conversation history is maintained within session
@@ -250,9 +252,10 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - Session is maintained for conversation continuity
 - Responses are formatted with markdown rendering
 - User can copy responses and start new conversations
+- Input field remains focused for continuous interaction
 
 #### **Business Rules**
-- **BR-020**: JWT token must include company_id, bot_id, and user_id
+- **BR-020**: JWT token includes company_id and bot_id (user_id excluded for security)
 - **BR-021**: Token uses same secret as user lifecycle system
 - **BR-022**: Session IDs are prefixed with 'admin_' for admin interface
 - **BR-023**: Interface supports both JSON and streaming responses
@@ -261,6 +264,7 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - **BR-026**: Messages are displayed in chronological order
 - **BR-027**: Streaming responses show real-time updates
 - **BR-028**: Interface provides copy functionality for responses
+- **BR-029**: Input field auto-focuses on page load and after each response
 
 ---
 
@@ -400,6 +404,7 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - ✅ Clear source attribution
 - ✅ Easy conversation management
 - ✅ Consistent design with Strapi admin theme
+- ✅ Auto-focus input field for immediate typing without clicking
 
 ---
 
