@@ -464,155 +464,139 @@ const AiChat = () => {
 
       // Handle Server-Sent Events (SSE) response - SAME APPROACH AS WIDGET
       if (contentType && contentType.includes('text/event-stream')) {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        
-        let buffer = '';
-        let accumulatedText = '';
-        let responseStarted = false;
-        let chunkCount = 0;
-        
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            
-            if (done) {
-              console.log(`[AI Chat] Stream completed after ${chunkCount} chunks`);
-              console.log(`[AI Chat] Final accumulated text length: ${accumulatedText.length}`);
+        // Handle streaming response
+        if (response.body) {
+          console.log('[AI Chat] Processing streaming response');
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let accumulatedText = '';
+          let chunkCount = 0;
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
               
-              // Stream complete - now parse final markdown (EXACT SAME AS WIDGET)
-              if (accumulatedText) {
-                console.log('[AI Chat] Stream complete, parsing final markdown');
-                const uniqueSources = extractSources(accumulatedText);
-                // Fix: Remove sources but preserve line breaks - don't trim!
-                const cleanText = accumulatedText.replace(/\[source: .+?\]/g, "");
-                // Fix: Remove loading message but preserve line breaks - don't trim!
-                const contentText = cleanText.replace(/^Getting your response\.\.\.?\s*/, "");
-              
-                console.log('[AI Chat] Content for markdown parsing:', contentText);
-                
-                // Now parse the complete markdown
-                const mainHtml = parseMarkdown(contentText);
-                
-                console.log('[AI Chat] Final HTML after parsing:', mainHtml);
-                
-                // Update final message with parsed HTML
-                setMessages(prev => prev.map(msg => 
-                  msg.id === assistantMessage.id 
-                    ? { 
-                        ...msg, 
-                        content: mainHtml,
-                        rawContent: accumulatedText,
-                        sources: uniqueSources.map((src, idx) => ({ id: idx + 1, text: src, title: src.length > 60 ? src.substring(0, 60) + '...' : src })),
-                        isLoading: false
-                      }
-                    : msg
-                ));
-                
-                // Refocus input field after streaming response is complete
-                setTimeout(() => {
-                  if (textareaRef.current) {
-                    textareaRef.current.focus();
-                  }
-                }, 100);
+              if (done) {
+                console.log(`[AI Chat] Stream completed after ${chunkCount} chunks`);
+                console.log(`[AI Chat] Final accumulated text length: ${accumulatedText.length}`);
+                break;
               }
+
+              chunkCount++;
+              const chunk = decoder.decode(value, { stream: true });
+              console.log(`[AI Chat] Chunk ${chunkCount}: "${chunk}"`);
+
+              // Extract data from Server-Sent Events format
+              const lines = chunk.split('\n');
+              let chunkText = '';
               
-              break;
-            }
-
-            chunkCount++;
-            const chunk = decoder.decode(value, { stream: true });
-            console.log(`[AI Chat] Chunk ${chunkCount}: "${chunk}"`);
-            
-            buffer += chunk;
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6); // Remove 'data: ' prefix
-                if (data === '[DONE]') continue;
-                
-                if (data.startsWith('[ERROR]')) {
-                  throw new Error(data.replace('[ERROR] ', ''));
+              for (const line of lines) {
+                if (line.startsWith('data: ') && !line.includes('[DONE]')) {
+                  chunkText += line.substring(6); // Remove "data: " prefix
                 }
+              }
+
+              if (chunkText) {
+                accumulatedText += chunkText;
                 
-                // Preserve empty chunks as line breaks, regular chunks as content (SAME AS WIDGET)
-                // Fix: Handle empty or whitespace-only chunks as line breaks
-                accumulatedText += (data === '' || data.trim() === '') ? '\n' : data;
-                
-                // Check if we have actual response content (not just loading message)
-                // Fix: Don't use .trim() here as it destroys line breaks
-                const cleanForCheck = accumulatedText.replace(/\[source: .+?\]/g, "");
-                const hasActualContent = cleanForCheck.length > 0 && !cleanForCheck.startsWith("Getting your response");
-                
-                if (!responseStarted && hasActualContent) {
-                  responseStarted = true;
-                  console.log(`[AI Chat] Response content detected, hiding loading spinner`);
-                }
-                
-                // Extract sources for display
-                const uniqueSources = extractSources(accumulatedText);
-                // Fix: Remove .trim() to preserve line breaks crucial for markdown
-                const cleanText = accumulatedText.replace(/\[source: .+?\]/g, "");
-                
-                if (responseStarted) {
-                  // Show actual content as RAW TEXT during streaming (NO MARKDOWN PARSING YET)
-                  const contentText = cleanText.replace(/^Getting your response\.\.\.?\s*/, "");
-                  
-                  setMessages(prev => prev.map(msg => 
-                    msg.id === assistantMessage.id 
-                      ? { 
-                          ...msg, 
-                          content: `<pre style="white-space: pre-wrap; font-family: inherit; margin: 0; line-height: 1.6;">${contentText}</pre>`,
-                          rawContent: accumulatedText,
-                          sources: uniqueSources.map((src, idx) => ({ id: idx + 1, text: src, title: src.length > 60 ? src.substring(0, 60) + '...' : src })),
-                          isLoading: false
-                        }
+                // Update the message with raw text (no processing during streaming)
+                setMessages(prevMessages =>
+                  prevMessages.map(msg =>
+                    msg.id === assistantMessage.id
+                      ? { ...msg, content: accumulatedText, isLoading: false }
                       : msg
-                  ));
+                  )
+                );
+
+                // Show content detected message only once
+                if (chunkCount === 1) {
+                  console.log('[AI Chat] Response content detected, hiding loading spinner');
                 }
               }
             }
-          }
-        } finally {
-          reader.releaseLock();
-        }
-        
-              } else {
-        // Handle regular JSON response - SAME APPROACH AS WIDGET
-        console.log(`[AI Chat] Handling as JSON response`);
-        const data = await response.json();
-        let raw = data.answer || data.error || "No response.";
-        
-        // Extract and deduplicate sources (SAME AS WIDGET)
-        const uniqueSources = extractSources(raw);
-        
-        // Fix: Remove [source: ...] from main text but preserve line breaks
-        const cleanText = raw.replace(/\[source: .+?\]/g, "");
-        
-        // Parse markdown to HTML
-        const mainHtml = parseMarkdown(cleanText);
-        
-        setMessages(prev => prev.map(msg => 
-          msg.id === assistantMessage.id 
-            ? { 
-                ...msg, 
-                content: mainHtml,
-                rawContent: raw,
-                sources: uniqueSources.map((src, idx) => ({ id: idx + 1, text: src, title: src.length > 60 ? src.substring(0, 60) + '...' : src })),
-                isLoading: false
+
+            // Process the complete text only after streaming is done
+            console.log('[AI Chat] Stream complete, parsing final markdown');
+            
+            // Extract sources and clean text
+            const sources = extractSources(accumulatedText);
+            const cleanedText = accumulatedText.replace(/\[source: .+?\]/g, '');
+            console.log('[AI Chat] Content for markdown parsing:', cleanedText);
+
+            // Apply HTML processing only to the final complete content
+            const finalHtml = processHtmlForGlasmorphism(parseMarkdown(cleanedText));
+            console.log('[AI Chat] Final HTML after processing:', finalHtml);
+
+            // Update with final processed content
+            setMessages(prevMessages =>
+              prevMessages.map(msg =>
+                msg.id === assistantMessage.id
+                  ? { 
+                      ...msg, 
+                      content: finalHtml,
+                      sources: sources.map((src, idx) => ({ 
+                        id: idx + 1, 
+                        text: src, 
+                        title: src.length > 60 ? src.substring(0, 60) + '...' : src 
+                      })),
+                      isLoading: false 
+                    }
+                  : msg
+              )
+            );
+
+            // Refocus input field after streaming response is complete
+            setTimeout(() => {
+              if (textareaRef.current) {
+                textareaRef.current.focus();
               }
-            : msg
-        ));
-        
-        // Refocus input field after JSON response is complete
-        setTimeout(() => {
-          if (textareaRef.current) {
-            textareaRef.current.focus();
+            }, 100);
+
+          } catch (streamError) {
+            console.error('[AI Chat] Stream reading error:', streamError);
+            setMessages(prevMessages =>
+              prevMessages.map(msg =>
+                msg.id === assistantMessage.id
+                  ? { ...msg, content: 'Error reading response stream', isLoading: false }
+                  : msg
+              )
+            );
+          } finally {
+            reader.releaseLock();
           }
-        }, 100);
-      }
+        } else {
+          // Handle non-streaming JSON response
+          const data = await response.json();
+          console.log('🔍 Raw API Response:', data.response);
+          
+          const sources = extractSources(data.response);
+          const cleanedText = data.response.replace(/\[source: .+?\]/g, '');
+          const finalHtml = processHtmlForGlasmorphism(parseMarkdown(cleanedText));
+          
+          setMessages(prevMessages =>
+            prevMessages.map(msg =>
+              msg.id === assistantMessage.id
+                ? { 
+                    ...msg, 
+                    content: finalHtml,
+                    sources: sources.map((src, idx) => ({ 
+                      id: idx + 1, 
+                      text: src, 
+                      title: src.length > 60 ? src.substring(0, 60) + '...' : src 
+                    })),
+                    isLoading: false 
+                  }
+                : msg
+            )
+          );
+
+          // Refocus input field after JSON response is complete
+          setTimeout(() => {
+            if (textareaRef.current) {
+              textareaRef.current.focus();
+            }
+          }, 100);
+        }
       
     } catch (error) {
       console.error('[AI Chat] Error calling retrieval service:', error);
