@@ -321,7 +321,6 @@ const AiChat = () => {
       if (contentType && contentType.includes('text/event-stream') && response.body) {
         console.log('[AI Chat] Processing streaming response');
         let chunkCount = 0;
-        let accumulatedText = '';
         let allChunks = []; // Store all raw chunks
 
         const reader = response.body.getReader();
@@ -333,7 +332,7 @@ const AiChat = () => {
 
             if (done) {
               console.log(`[AI Chat] Stream completed after ${chunkCount} chunks`);
-              console.log(`[AI Chat] Final accumulated text length: ${accumulatedText.length}`);
+              console.log(`[AI Chat] Total chunks received: ${allChunks.length}`);
               break;
             }
 
@@ -344,10 +343,38 @@ const AiChat = () => {
             // Store raw chunk for final processing
             allChunks.push(chunk);
 
-            // Extract data from Server-Sent Events format 
-            // Handle empty data content as structural breaks, concatenate regular content as-is
+            // Just extract and accumulate raw text content for real-time display
+            // Don't try to process markdown structure during streaming
             const lines = chunk.split('\n');
             let chunkText = '';
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                if (!line.includes('[DONE]')) {
+                  const data = line.substring(6); // Remove "data: " prefix
+                  chunkText += data; // Just accumulate raw content
+                }
+              }
+            }
+
+            // Update raw content for real-time display during streaming
+            setMessages(prevMessages => 
+              prevMessages.map(msg => 
+                msg.id === assistantMessage.id
+                  ? { ...msg, rawContent: (msg.rawContent || '') + chunkText }
+                  : msg
+              )
+            );
+          }
+
+          // Now apply markdown formatting to the complete streamed text
+          console.log('[AI Chat] Stream complete, applying final markdown formatting');
+          
+          // Now process ALL chunks at once to get the complete text
+          let finalText = '';
+          
+          for (const chunk of allChunks) {
+            const lines = chunk.split('\n');
             
             for (const line of lines) {
               if (line.startsWith('data: ')) {
@@ -356,47 +383,38 @@ const AiChat = () => {
                   
                   if (data === '') {
                     // Empty data content represents a newline in the original text
-                    chunkText += '\n';
+                    finalText += '\n';
                   } else {
                     // Regular data content - concatenate as-is (spaces are already embedded)
-                    chunkText += data;
+                    finalText += data;
                   }
                 }
               }
             }
-            
-            if (chunkText) {
-              accumulatedText += chunkText;
-              
-              // Show raw text during streaming using rawContent field
-              setMessages(prevMessages =>
-                prevMessages.map(msg =>
-                  msg.id === assistantMessage.id
-                    ? { ...msg, rawContent: accumulatedText, content: '', isLoading: false }
-                    : msg
-                )
-              );
-              
-              // Show content detected message only once
-              if (chunkCount === 1) {
-                console.log('[AI Chat] Response content detected, showing streaming text');
-              }
+          }
+          
+          console.log('[AI Chat] Stream complete, applying final markdown formatting');
+          console.log('[AI Chat] Raw accumulated text:', JSON.stringify(finalText));
+
+          // Now extract sources from the final complete text
+          const sources = [];
+          const sourceRegex = /\[source:\s*([^]]+)\]/g;
+          let match;
+          while ((match = sourceRegex.exec(finalText)) !== null) {
+            if (!sources.includes(match[1])) {
+              sources.push(match[1]);
             }
           }
 
-          // Now apply markdown formatting to the complete streamed text
-          console.log('[AI Chat] Stream complete, applying final markdown formatting');
-          console.log('[AI Chat] Raw accumulated text:', JSON.stringify(accumulatedText));
+          // Remove source references from content for display
+          const contentWithoutSources = finalText.replace(sourceRegex, '').trim();
           
-          // Extract sources and clean text
-          const sources = extractSources(accumulatedText);
-          let cleanedText = accumulatedText.replace(/\[source: .+?\]/g, '');
-          
-          console.log('[AI Chat] Content for markdown parsing:', cleanedText.trim());
+          console.log('[AI Chat] Content for markdown parsing:', contentWithoutSources);
 
-          // Apply ONLY markdown-it processing - no regex manipulation
-          const finalHtml = renderMarkdown(cleanedText.trim());
-          console.log('[AI Chat] Final HTML after processing:', finalHtml);
+          // Apply markdown formatting to the complete final text
+          const processedHtml = md.render(contentWithoutSources);
+          
+          console.log('[AI Chat] Final HTML after processing:', processedHtml);
 
           // Update the message with final processed content
           setMessages(prevMessages =>
@@ -405,7 +423,7 @@ const AiChat = () => {
                 ? { 
                     ...msg, 
                     rawContent: '', // Clear raw content
-                    content: finalHtml, // Set formatted HTML
+                    content: processedHtml, // Set formatted HTML
                     sources: sources.map((src, idx) => ({ 
                       id: idx + 1, 
                       text: src, 
