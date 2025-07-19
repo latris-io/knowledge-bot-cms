@@ -632,24 +632,30 @@ const AiChat = () => {
     return (
       <div style={{
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-        background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 25%, #f1f3f4 50%, #ffffff 75%, #f8f9fa 100%)',
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d30 25%, #1a1a1a 50%, #2d2d30 75%, #1a1a1a 100%)',
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        color: '#ffffff'
       }}>
         <div style={{
           width: '40px',
           height: '40px',
-          border: '3px solid #f3f3f3',
-          borderTop: '3px solid #007aff',
+          border: '3px solid rgba(255, 255, 255, 0.2)',
+          borderTop: '3px solid #7877c6',
           borderRadius: '50%',
           animation: 'spin 1s linear infinite',
-          marginBottom: '16px'
+          marginBottom: '16px',
+          boxShadow: '0 0 20px rgba(120, 119, 198, 0.5)'
         }} />
-        <div style={{ color: '#86868b', fontSize: '14px' }}>
-          Loading your AI assistant...
+        <div style={{ 
+          color: 'rgba(255, 255, 255, 0.7)', 
+          fontSize: '14px',
+          fontWeight: '500'
+        }}>
+          Initializing AI Assistant...
         </div>
       </div>
     );
@@ -660,27 +666,30 @@ const AiChat = () => {
     return (
       <div style={{
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-        background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 25%, #f1f3f4 50%, #ffffff 75%, #f8f9fa 100%)',
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d30 25%, #1a1a1a 50%, #2d2d30 75%, #1a1a1a 100%)',
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'column',
-        padding: '20px'
+        padding: '20px',
+        color: '#ffffff'
       }}>
         <div style={{
-          background: '#ff3b30',
-          color: 'white',
-          padding: '12px 20px',
-          borderRadius: '8px',
+          background: 'rgba(255, 69, 58, 0.2)',
+          border: '1px solid rgba(255, 69, 58, 0.3)',
+          color: '#ff453a',
+          padding: '16px 24px',
+          borderRadius: '12px',
           marginBottom: '16px',
           textAlign: 'center',
-          maxWidth: '400px'
+          maxWidth: '400px',
+          backdropFilter: 'blur(20px)'
         }}>
           ⚠️ {error}
         </div>
         <div style={{ 
-          color: '#86868b', 
+          color: 'rgba(255, 255, 255, 0.6)', 
           fontSize: '14px',
           textAlign: 'center',
           maxWidth: '400px',
@@ -695,27 +704,27 @@ const AiChat = () => {
   return (
     <div style={{
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-      background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 25%, #f1f3f4 50%, #ffffff 75%, #f8f9fa 100%)',
+      background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d30 25%, #1a1a1a 50%, #2d2d30 75%, #1a1a1a 100%)',
       minHeight: '100vh',
       overflow: 'hidden',
-      position: 'relative'
+      position: 'relative',
+      color: '#ffffff'
     }}>
-      {/* Ambient Background */}
+      {/* Holographic Background Effect */}
       <div style={{
         position: 'fixed',
-        top: '-50%',
-        left: '-50%',
-        width: '200%',
-        height: '200%',
-        background: `
-          radial-gradient(circle at 30% 20%, rgba(120, 119, 198, 0.03) 0%, transparent 50%),
-          radial-gradient(circle at 70% 80%, rgba(255, 99, 99, 0.02) 0%, transparent 50%)
-        `,
-        animation: 'ambientGlow 20s ease-in-out infinite alternate',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'radial-gradient(600px circle at 50% 50%, rgba(120, 119, 198, 0.05) 0%, rgba(255, 45, 85, 0.03) 40%, transparent 100%)',
+        pointerEvents: 'none',
+        transition: 'all 0.3s ease',
+        animation: 'ambientPulse 12s ease-in-out infinite alternate',
         zIndex: 0
       }} />
 
-      {/* Floating Elements */}
+      {/* Floating Glass Orbs */}
       <div style={{
         position: 'fixed',
         top: 0,
@@ -727,80 +736,183 @@ const AiChat = () => {
       }}>
         <div style={{
           position: 'absolute',
-          width: '120px',
-          height: '120px',
-          top: '10%',
-          right: '15%',
+          width: '200px',
+          height: '200px',
+          top: '15%',
+          right: '20%',
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, rgba(0, 122, 255, 0.03) 0%, rgba(88, 86, 214, 0.02) 100%)',
-          animation: 'float 20s infinite ease-in-out'
+          background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          animation: 'orbFloat 25s infinite ease-in-out',
+          animationDelay: '0s'
         }} />
         <div style={{
           position: 'absolute',
-          width: '80px',
-          height: '80px',
-          bottom: '20%',
-          left: '10%',
+          width: '150px',
+          height: '150px',
+          bottom: '25%',
+          left: '15%',
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, rgba(0, 122, 255, 0.03) 0%, rgba(88, 86, 214, 0.02) 100%)',
-          animation: 'float 20s infinite ease-in-out',
-          animationDelay: '-7s'
+          background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          animation: 'orbFloat 25s infinite ease-in-out',
+          animationDelay: '-8s'
         }} />
         <div style={{
           position: 'absolute',
-          width: '60px',
-          height: '60px',
-          top: '60%',
-          right: '8%',
+          width: '100px',
+          height: '100px',
+          top: '65%',
+          right: '10%',
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, rgba(0, 122, 255, 0.03) 0%, rgba(88, 86, 214, 0.02) 100%)',
-          animation: 'float 20s infinite ease-in-out',
-          animationDelay: '-14s'
+          background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          animation: 'orbFloat 25s infinite ease-in-out',
+          animationDelay: '-16s'
         }} />
       </div>
 
-      {/* Main Container */}
+
+      {/* Main Container - Glassmorphism */}
       <div style={{
+        flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh',
-        backdropFilter: 'blur(20px)',
+        background: 'rgba(255, 255, 255, 0.08)',
+        backdropFilter: 'blur(80px) saturate(2) brightness(1.1)',
+        border: '1px solid rgba(255, 255, 255, 0.15)',
+        borderRadius: '24px',
+        margin: '20px',
+        overflow: 'hidden',
+        boxShadow: `
+          0 8px 32px rgba(0, 0, 0, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.2),
+          0 0 0 1px rgba(255, 255, 255, 0.05)`,
         position: 'relative',
-        zIndex: 1
+        zIndex: 1,
+        height: 'calc(100vh - 40px)'
       }}>
-                  {/* Header */}
+        {/* Holographic Top Border */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '2px',
+          background: `linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(120, 119, 198, 0.6) 20%, 
+            rgba(255, 45, 85, 0.6) 40%, 
+            rgba(52, 199, 89, 0.6) 60%, 
+            rgba(255, 149, 0, 0.6) 80%, 
+            transparent 100%)`,
+          animation: 'holographicFlow 4s ease-in-out infinite alternate'
+        }} />
+        
+        {/* Holographic Bottom Border */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '1px',
+          background: `linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(255, 149, 0, 0.4) 25%, 
+            rgba(52, 199, 89, 0.4) 50%, 
+            rgba(255, 45, 85, 0.4) 75%, 
+            transparent 100%)`,
+          animation: 'holographicFlow 4s ease-in-out infinite alternate-reverse'
+        }} />
+        {/* Glassmorphism Header */}
+        <div style={{
+          padding: '32px 48px',
+          background: 'rgba(0, 0, 0, 0.2)',
+          backdropFilter: 'blur(60px) brightness(1.2)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          {/* Header Sweep Effect */}
           <div style={{
-            padding: '20px 32px',
-            borderBottom: '0.5px solid rgba(0, 0, 0, 0.06)',
-            background: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(20px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <div style={{ flex: 1 }}>
-              <h1 style={{
-                fontSize: '28px',
-                fontWeight: '600',
-                color: '#1d1d1f',
-                letterSpacing: '-0.02em',
-                textAlign: 'center',
-                margin: 0
-              }}>
-                AI Assistant
-              </h1>
+            position: 'absolute',
+            top: 0,
+            left: '-100%',
+            width: '100%',
+            height: '100%',
+            background: `linear-gradient(90deg, 
+              transparent 0%, 
+              rgba(255, 255, 255, 0.08) 50%, 
+              transparent 100%)`,
+            animation: 'headerSweep 6s ease-in-out infinite'
+          }} />
+
+          <div style={{ flex: 1 }}>
+            <h1 style={{
+              fontSize: '36px',
+              fontWeight: '700',
+              background: `linear-gradient(135deg, 
+                #ffffff 0%, 
+                #e6e6e6 25%, 
+                #7877c6 50%, 
+                #ff2d55 75%, 
+                #ffffff 100%)`,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              textAlign: 'center',
+              letterSpacing: '-0.03em',
+              animation: 'textShimmer 4s ease-in-out infinite alternate',
+              position: 'relative',
+              zIndex: 1,
+              margin: 0
+            }}>
+              AI Assistant
+            </h1>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              color: 'rgba(255, 255, 255, 0.6)',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              textAlign: 'center',
+              marginTop: '8px',
+              position: 'relative',
+              zIndex: 1
+            }}>
+              Vision Pro Max Ultra
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '12px',
+              marginTop: '16px'
+            }}>
               <div style={{
-                fontSize: '13px',
-                fontWeight: '400',
-                color: '#86868b',
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                textAlign: 'center',
-                marginTop: '4px'
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: jwtToken ? '#34c759' : '#ff453a',
+                boxShadow: jwtToken ? '0 0 12px rgba(52, 199, 89, 0.8)' : '0 0 12px rgba(255, 69, 58, 0.8)',
+                animation: 'statusPulse 2s ease-in-out infinite'
+              }} />
+              <div style={{
+                fontSize: '12px',
+                color: 'rgba(255, 255, 255, 0.5)',
+                fontWeight: '500'
               }}>
-                Knowledge Explorer
+                {jwtToken ? 'Connected' : 'Connecting...'}
               </div>
             </div>
+          </div>
             
             {/* Debug Toggle */}
             <button
@@ -1092,12 +1204,96 @@ const AiChat = () => {
         </div>
       </div>
 
-      {/* Sophisticated CSS Animations */}
+      {/* Glassmorphism CSS Animations */}
       <style dangerouslySetInnerHTML={{
         __html: `
-          @keyframes ambientGlow {
-            0% { transform: rotate(0deg) scale(1); }
-            100% { transform: rotate(1deg) scale(1.02); }
+          /* Glassmorphism Animations */
+          @keyframes ambientPulse {
+            0% { opacity: 0.4; }
+            100% { opacity: 0.8; }
+          }
+          
+          @keyframes holographicFlow {
+            0% { opacity: 0.6; transform: translateX(-50%); }
+            100% { opacity: 1; transform: translateX(50%); }
+          }
+          
+          @keyframes headerSweep {
+            0% { left: -100%; }
+            50% { left: 100%; }
+            100% { left: -100%; }
+          }
+          
+          @keyframes textShimmer {
+            0% { filter: brightness(1) contrast(1); }
+            100% { filter: brightness(1.3) contrast(1.2); }
+          }
+          
+          @keyframes statusPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.3); }
+          }
+          
+          @keyframes orbFloat {
+            0%, 100% { 
+              transform: translateY(0px) translateX(0px) scale(1);
+              opacity: 0.6;
+            }
+            25% { 
+              transform: translateY(-20px) translateX(15px) scale(1.05);
+              opacity: 0.8;
+            }
+            50% { 
+              transform: translateY(-10px) translateX(-10px) scale(0.95);
+              opacity: 0.7;
+            }
+            75% { 
+              transform: translateY(-15px) translateX(-15px) scale(1.02);
+              opacity: 0.9;
+            }
+          }
+          
+          @keyframes avatarGlow {
+            0% { 
+              box-shadow: 0 4px 16px rgba(120, 119, 198, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+              transform: scale(1);
+            }
+            100% { 
+              box-shadow: 0 8px 24px rgba(120, 119, 198, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+              transform: scale(1.02);
+            }
+          }
+          
+          @keyframes avatarShine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+          }
+          
+          @keyframes contentShimmer {
+            0% { left: -100%; }
+            50% { left: 100%; }
+            100% { left: -100%; }
+          }
+          
+          @keyframes borderGlow {
+            0% { opacity: 0.5; }
+            100% { opacity: 1; }
+          }
+          
+          @keyframes inputGlow {
+            0% { opacity: 0.6; }
+            100% { opacity: 1; }
+          }
+          
+          @keyframes holographicBorder {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          
+          @keyframes buttonShine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
           }
           
           @keyframes messageSlideIn {
