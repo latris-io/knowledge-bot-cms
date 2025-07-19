@@ -288,6 +288,7 @@ const AiChat = () => {
       id: Date.now() + 1,
       role: 'assistant',
       content: '',
+      rawContent: '', // For streaming text before markdown formatting
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       sources: [],
       isLoading: true
@@ -340,20 +341,10 @@ const AiChat = () => {
             chunkCount++;
             console.log(`[AI Chat] Chunk ${chunkCount}:`, JSON.stringify(chunk));
 
-            // Just store the raw chunk - no processing during streaming
+            // Store raw chunk for final processing
             allChunks.push(chunk);
 
-            // Show loading state during streaming
-            if (chunkCount === 1) {
-              console.log('[AI Chat] Response content detected, hiding loading spinner');
-            }
-          }
-
-          // Now process all chunks at once after streaming is complete
-          console.log('[AI Chat] Stream complete, reconstructing text from all chunks');
-          
-          // Reconstruct text from all collected chunks
-          for (const chunk of allChunks) {
+            // Also process this chunk for real-time display
             const lines = chunk.split('\n');
             let chunkText = '';
             
@@ -372,13 +363,28 @@ const AiChat = () => {
               }
             }
             
-            accumulatedText += chunkText;
+            if (chunkText) {
+              accumulatedText += chunkText;
+              
+              // Show raw text during streaming using rawContent field
+              setMessages(prevMessages =>
+                prevMessages.map(msg =>
+                  msg.id === assistantMessage.id
+                    ? { ...msg, rawContent: accumulatedText, content: '', isLoading: false }
+                    : msg
+                )
+              );
+              
+              // Show content detected message only once
+              if (chunkCount === 1) {
+                console.log('[AI Chat] Response content detected, showing streaming text');
+              }
+            }
           }
-          
+
+          // Now apply markdown formatting to the complete streamed text
+          console.log('[AI Chat] Stream complete, applying final markdown formatting');
           console.log('[AI Chat] Raw accumulated text:', JSON.stringify(accumulatedText));
-          
-          // Now process the complete text for final display
-          console.log('[AI Chat] Processing final markdown');
           
           // Extract sources and clean text
           const sources = extractSources(accumulatedText);
@@ -403,7 +409,8 @@ const AiChat = () => {
               msg.id === assistantMessage.id
                 ? { 
                     ...msg, 
-                    content: finalHtml,
+                    rawContent: '', // Clear raw content
+                    content: finalHtml, // Set formatted HTML
                     sources: sources.map((src, idx) => ({ 
                       id: idx + 1, 
                       text: src, 
