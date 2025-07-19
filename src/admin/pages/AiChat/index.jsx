@@ -795,6 +795,38 @@ const AiChat = () => {
         zIndex: 1,
         height: 'calc(100vh - 40px)'
       }}>
+        {/* Holographic Top Border */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '2px',
+          background: `linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(120, 119, 198, 0.6) 20%, 
+            rgba(255, 45, 85, 0.6) 40%, 
+            rgba(52, 199, 89, 0.6) 60%, 
+            rgba(255, 149, 0, 0.6) 80%, 
+            transparent 100%)`,
+          animation: 'holographicFlow 4s ease-in-out infinite alternate'
+        }} />
+        
+        {/* Holographic Bottom Border */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '1px',
+          background: `linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(255, 149, 0, 0.4) 25%, 
+            rgba(52, 199, 89, 0.4) 50%, 
+            rgba(255, 45, 85, 0.4) 75%, 
+            transparent 100%)`,
+          animation: 'holographicFlow 4s ease-in-out infinite alternate-reverse'
+        }} />
 
         {/* Glassmorphism Header */}
         <div style={{
@@ -1144,22 +1176,7 @@ const AiChat = () => {
               transform: 'translateY(-2px)'
             } : {})
           }}>
-            {/* Animated Border Effect */}
-            {input && (
-              <div style={{
-                position: 'absolute',
-                top: '-2px',
-                left: '-2px',
-                right: '-2px',
-                bottom: '-2px',
-                background: 'linear-gradient(45deg, #7877c6, #ff2d55, #34c759, #ff9500, #7877c6)',
-                backgroundSize: '400% 400%',
-                borderRadius: '26px',
-                zIndex: -1,
-                opacity: 1,
-                animation: 'holographicBorder 3s linear infinite'
-              }} />
-            )}
+
             <textarea
               ref={textareaRef}
               value={input}
@@ -1334,11 +1351,6 @@ const AiChat = () => {
             100% { opacity: 1; }
           }
           
-          @keyframes holographicBorder {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-          }
           
           @keyframes buttonShine {
             0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
