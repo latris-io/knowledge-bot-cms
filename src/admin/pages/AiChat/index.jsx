@@ -464,7 +464,7 @@ const AiChat = () => {
               const uniqueSources = [...new Set(allSources)];
               
               // Remove sources but preserve line breaks - don't trim!
-              const cleanText = accumulatedText.replace(/\[source: .+?\]/g, "");
+              const cleanText = accumulatedText.replace(/\[source: .+?\]\.?/g, "");
               // Remove loading message but preserve line breaks - don't trim!
               const contentText = cleanText.replace(/^Getting your response\.\.\.?\s*/, "");
               
@@ -523,10 +523,19 @@ const AiChat = () => {
                     
                   case 'content':
                     if (chunkData.content) {
-                      accumulatedText += chunkData.content; // Extract just the content
+                      // Add intelligent spacing between chunks
+                      const needsSpace = accumulatedText.length > 0 && 
+                                       !accumulatedText.endsWith(' ') && 
+                                       !accumulatedText.endsWith('\n') && 
+                                       !chunkData.content.startsWith(' ') && 
+                                       !chunkData.content.startsWith('\n') &&
+                                       /[.!?]$/.test(accumulatedText.trim()) && 
+                                       /^[A-Z]/.test(chunkData.content.trim());
+                      
+                      accumulatedText += (needsSpace ? ' ' : '') + chunkData.content;
                       
                       // Check if we have actual response content
-                      const cleanForCheck = accumulatedText.replace(/\[source: .+?\]/g, "").trim();
+                      const cleanForCheck = accumulatedText.replace(/\[source: .+?\]\.?/g, "").trim();
                       const hasActualContent = cleanForCheck.length > 0 && !cleanForCheck.startsWith("Getting your response");
                       
                       if (!responseStarted && hasActualContent) {
@@ -575,7 +584,7 @@ const AiChat = () => {
                 }
                 
                 // Check if we have actual response content (fallback mode)
-                const cleanForCheck = accumulatedText.replace(/\[source: .+?\]/g, "").trim();
+                const cleanForCheck = accumulatedText.replace(/\[source: .+?\]\.?/g, "").trim();
                 const hasActualContent = cleanForCheck.length > 0 && !cleanForCheck.startsWith("Getting your response");
                 
                 if (!responseStarted && hasActualContent) {
@@ -607,6 +616,7 @@ const AiChat = () => {
           }
         }, 100);
       
+      }
       } else if (contentType && contentType.includes('application/json')) {
         // Handle JSON response (like widget fallback)
         console.log('[AI Chat] Handling JSON response');
@@ -619,7 +629,7 @@ const AiChat = () => {
         const uniqueSources = [...new Set(allSources)];
         
         // Remove [source: ...] from main text
-        raw = raw.replace(/\[source: .+?\]/g, "").trim();
+        raw = raw.replace(/\[source: .+?\]\.?/g, "").trim();
         
         // Parse markdown to HTML using widget's preprocessing
         const mainHtml = parseMarkdown(raw);
