@@ -120,9 +120,8 @@ const AiChat = () => {
   const fetchUserData = async () => {
     try {
       setUserLoading(true);
-      console.log('🔄 Reverting to JWT approach that was working...');
       
-      // Extract JWT token from cookies (this was working before)
+      // Extract JWT token from cookies
       const getCookieValue = (name) => {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
@@ -131,7 +130,6 @@ const AiChat = () => {
       };
       
       const jwtToken = getCookieValue('jwtToken');
-      console.log('🔑 JWT Token found:', !!jwtToken);
       
       const headers = {
         'Content-Type': 'application/json',
@@ -139,27 +137,19 @@ const AiChat = () => {
       
       if (jwtToken) {
         headers['Authorization'] = `Bearer ${jwtToken}`;
-        console.log('✅ Added Authorization header with JWT token');
-      } else {
-        console.log('⚠️ No JWT token found in cookies');
       }
       
-      console.log('📡 Making request to /admin/users/me with JWT auth...');
       const userResponse = await fetch('/admin/users/me', {
         method: 'GET',
         headers,
         credentials: 'include',
       });
 
-      console.log('📡 Response:', userResponse.status, userResponse.statusText);
-
       if (!userResponse.ok) {
         throw new Error(`Failed to fetch user: ${userResponse.status} ${userResponse.statusText}`);
       }
 
       const userData = await userResponse.json();
-      console.log('📋 User data received:', userData);
-      console.log('📋 User keys:', Object.keys(userData));
       
       // For now, use mock bot/company data while we figure out the real source
       setUser({
@@ -172,10 +162,8 @@ const AiChat = () => {
         company: { id: 1, name: 'Test Company' }
       });
       
-      console.log('✅ User set with first name:', userData.firstname, 'last name:', userData.lastname);
-      
     } catch (error) {
-      console.error('❌ JWT fetch failed:', error);
+      // Keep essential error logging without exposing sensitive details
       setError(`Auth failed: ${error.message}. Please ensure you're logged into Strapi admin.`);
     } finally {
       setUserLoading(false);
@@ -202,7 +190,7 @@ const AiChat = () => {
         if (textareaRef.current) {
           textareaRef.current.focus();
           resizeTextarea(); // Initial resize when textarea becomes available
-          console.log('🎯 Textarea focused - enabled state:', { isLoading, jwtToken: !!jwtToken, user: !!user });
+    
         }
       }, 50);
       
@@ -214,20 +202,16 @@ const AiChat = () => {
     // Initialize chat and generate JWT token
     const initializeChat = async () => {
       try {
-        console.log('🚀 [AI Chat] Initializing...');
-        console.log('[Enhanced Parser] Ready for use');
         
         // First fetch user data
-        console.log('🔄 [AI Chat] Calling fetchUserData...');
+
         await fetchUserData();
-        console.log('✅ [AI Chat] fetchUserData completed');
+
       } catch (err) {
-        console.error('❌ [AI Chat] Failed to initialize chat:', err);
+
         setError(`Initialization failed: ${err.message}`);
       }
     };
-
-    console.log('🎬 [AI Chat] useEffect triggered, calling initializeChat...');
     initializeChat();
   }, []);
 
@@ -243,11 +227,7 @@ const AiChat = () => {
           bot_id: user.bot.id
           // Note: Only company_id and bot_id needed - user_id removed per spec
         };
-
-        console.log('🔑 Generating JWT with payload:', payload);
         const token = await createJWT(payload, 'my-ultra-secure-signing-key');
-        console.log('🎯 Generated JWT Token:', token);
-        console.log('🎯 Token length:', token?.length);
         setJwtToken(token);
 
         // Add welcome message
@@ -263,7 +243,7 @@ const AiChat = () => {
         // Clear any previous errors
         setError('');
       } catch (err) {
-        console.error('Failed to generate JWT token:', err);
+
         setError(`JWT generation failed: ${err.message}`);
       }
     };
@@ -304,7 +284,7 @@ const AiChat = () => {
     const parseMarkdown = (text) => {
       if (!text) return '';
       
-      console.log('[AI Chat] Input text for markdown processing:', text);
+
       
       // Preprocessing: Fix markdown structure issues (from widget)
       let processedText = text;
@@ -400,14 +380,14 @@ const AiChat = () => {
         '$1\n\n$2'
       );
       
-      console.log('[AI Chat] Processed text after preprocessing:', processedText);
+
       
       try {
         const result = md.render(processedText);
-        console.log('[AI Chat] Final HTML after markdown-it:', result);
+
         return result;
       } catch (error) {
-        console.warn('[AI Chat] Markdown parsing failed, using fallback:', error);
+
         // Fallback: basic inline formatting only
         return text
           .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -419,7 +399,7 @@ const AiChat = () => {
     };
 
     try {
-      console.log('[AI Chat] Making request to retrieval service...');
+
       const response = await fetch('https://knowledge-bot-retrieval.onrender.com/ask', {
         method: 'POST',
         headers: {
@@ -439,12 +419,10 @@ const AiChat = () => {
       }
 
       const contentType = response.headers.get('content-type');
-      console.log('[AI Chat] Response content type:', contentType);
-
       // Handle different response types (like the widget)
       if (contentType && contentType.includes('text/event-stream') && response.body) {
         // Handle streaming response (like the widget)
-        console.log('[AI Chat] Handling streaming response');
+
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let chunkCount = 0;
@@ -454,13 +432,11 @@ const AiChat = () => {
         while (true) {
           const { done, value } = await reader.read();
           if (done) {
-            console.log(`[AI Chat] Stream completed after ${chunkCount} chunks`);
-            console.log(`[AI Chat] Final accumulated text length: ${accumulatedText.length}`);
-            console.log(`[AI Chat] Final accumulated text:`, accumulatedText);
+
             
             // Stream complete - now parse final markdown (like widget)
             if (accumulatedText) {
-              console.log('[AI Chat] Stream complete, parsing final markdown');
+
               
               // Extract and deduplicate sources
               const sourceMatches = [...accumulatedText.matchAll(/\[source: (.+?)\]/g)];
@@ -472,12 +448,12 @@ const AiChat = () => {
               // Remove loading message but preserve line breaks - don't trim!
               const contentText = cleanText.replace(/^Getting your response\.\.\.?\s*/, "");
               
-              console.log('[AI Chat] Content for markdown parsing:', contentText);
+
               
               // Now parse the complete markdown using widget's preprocessing
               const mainHtml = parseMarkdown(contentText);
               
-              console.log('[AI Chat] Final HTML after parsing:', mainHtml);
+
               
               // Update message with final processed content
               setMessages(prevMessages =>
@@ -498,7 +474,7 @@ const AiChat = () => {
                 )
               );
             } else {
-              console.log('[AI Chat] No accumulated text to parse');
+
             }
             
             break;
@@ -506,7 +482,7 @@ const AiChat = () => {
 
           chunkCount++;
           const chunk = decoder.decode(value, { stream: true });
-          console.log(`[AI Chat] Chunk ${chunkCount}: "${chunk}"`);
+
           
           const lines = chunk.split('\n');
           for (const line of lines) {
@@ -517,12 +493,12 @@ const AiChat = () => {
               try {
                 // Parse JSON chunk (new structured format)
                 const chunkData = JSON.parse(data);
-                console.log(`[AI Chat] Parsed chunk:`, chunkData);
+
                 
                 // Handle different chunk types
                 switch (chunkData.type) {
                   case 'start':
-                    console.log(`[AI Chat] Stream started`);
+
                     break;
                     
                   case 'content':
@@ -544,7 +520,7 @@ const AiChat = () => {
                       
                       if (!responseStarted && hasActualContent) {
                         responseStarted = true;
-                        console.log(`[AI Chat] Response content detected (chunk type: ${chunkData.content_type}), showing streaming text`);
+
                       }
                       
                       if (responseStarted) {
@@ -564,21 +540,19 @@ const AiChat = () => {
                     break;
                     
                   case 'error':
-                    console.error(`[AI Chat] Stream error:`, chunkData.error);
+
                     throw new Error(chunkData.error || 'Unknown streaming error');
                     
                   case 'end':
-                    console.log(`[AI Chat] Stream ended`);
+
                     break;
                     
                   default:
-                    console.warn(`[AI Chat] Unknown chunk type: ${chunkData.type}`, chunkData);
+
                 }
                 
               } catch (parseError) {
                 // Fallback: treat as raw text (backward compatibility)
-                console.warn(`[AI Chat] Failed to parse JSON chunk, treating as raw text:`, parseError);
-                console.log(`[AI Chat] Raw data:`, data);
                 
                 // Handle old format for backward compatibility
                 if (data === '') {
@@ -593,7 +567,7 @@ const AiChat = () => {
                 
                 if (!responseStarted && hasActualContent) {
                   responseStarted = true;
-                  console.log(`[AI Chat] Response content detected (fallback mode), showing streaming text`);
+
                 }
                 
                 if (responseStarted) {
@@ -623,7 +597,7 @@ const AiChat = () => {
       }
       } else if (contentType && contentType.includes('application/json')) {
         // Handle JSON response (like widget fallback)
-        console.log('[AI Chat] Handling JSON response');
+
         const data = await response.json();
         let raw = data.response || data.error || "No response.";
         
@@ -664,7 +638,7 @@ const AiChat = () => {
       }
         
     } catch (error) {
-      console.error('[AI Chat] Error calling retrieval service:', error);
+
       setMessages(prev => prev.map(msg => 
         msg.id === assistantMessage.id 
           ? { 
@@ -853,8 +827,6 @@ const AiChat = () => {
           animationDelay: '-16s'
         }} />
       </div>
-
-
       {/* Main Container - Glassmorphism */}
       <div style={{
         flex: 1,
@@ -919,8 +891,6 @@ const AiChat = () => {
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
-
-
           <div style={{ flex: 1 }}>
             <h1 style={{
               fontSize: '36px',

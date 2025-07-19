@@ -14,7 +14,13 @@
     "test:e2e": "jest tests/e2e",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
-    "test:ci": "jest --ci --coverage --watchAll=false"
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "test:use-cases": "node tests/integration/use-cases/run-all-use-case-tests.js",
+    "test:uc001": "jest --config=tests/integration/use-cases/jest.config.use-cases.js tests/integration/use-cases/test-uc001-user-validation.test.js",
+    "test:uc002": "jest --config=tests/integration/use-cases/jest.config.use-cases.js tests/integration/use-cases/test-uc002-toast-notifications.test.js",
+    "test:uc003": "jest --config=tests/integration/use-cases/jest.config.use-cases.js tests/integration/use-cases/test-uc003-jwt-widget.test.js",
+    "test:uc004": "jest --config=tests/integration/use-cases/jest.config.use-cases.js tests/integration/use-cases/test-uc004-file-upload.test.js",
+    "test:uc005": "jest --config=tests/integration/use-cases/jest.config.use-cases.js tests/integration/use-cases/test-uc005-ai-chat.test.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.520.0",

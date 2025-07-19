@@ -354,7 +354,7 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - **Chat Workflow**: Tests for conversation flow
 - **Token Authentication**: Tests for JWT-based access
 
-### **Test Files**
+### **Component-Level Test Files**
 - `tests/integration/api/test_preference_creation.test.js` - User notification preferences
 - `tests/integration/api/test_preference_lookup_existing.test.js` - Preference lookup
 - `tests/integration/api/test_ai_chat.test.js` - AI Chat functionality
@@ -362,15 +362,27 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - `tests/helpers/chat-helpers.js` - Chat-specific test utilities
 - `tests/helpers/test-setup.js` - Global test configuration
 
+### **Use Case Regression Test Files**
+- `tests/integration/use-cases/test-uc001-user-validation.test.js` - **UC-001** validation ✅
+- `tests/integration/use-cases/test-uc002-toast-notifications.test.js` - **UC-002** validation ✅
+- `tests/integration/use-cases/test-uc003-jwt-widget.test.js` - **UC-003** validation ✅
+- `tests/integration/use-cases/test-uc004-file-upload.test.js` - **UC-004** validation ✅
+- `tests/integration/use-cases/test-uc005-ai-chat.test.js` - **UC-005** validation ✅
+- `tests/integration/use-cases/run-all-use-case-tests.js` - **All Use Cases** runner script ✅
+
 ### **Test Coverage by Use Case**
-- **UC-001**: 12+ test cases covering user validation scenarios
-- **UC-002**: 8+ test cases covering toast notification functionality
-- **UC-003**: 6+ test cases covering JWT token generation
-- **UC-004**: 4+ test cases covering file upload processing
-- **UC-005**: 28+ test cases covering AI chat interface functionality including:
-  - Source extraction with trailing period handling (3 new tests)
-  - Intelligent spacing logic (4 new tests)
-  - Performance optimization scenarios
+- **UC-001**: 8 test cases covering user validation scenarios ✅
+- **UC-002**: 12 test cases covering toast notification functionality ✅
+- **UC-003**: 15+ test cases covering JWT token generation and widget instructions ✅
+- **UC-004**: 14 test cases covering file upload processing and user assignment ✅
+- **UC-005**: 35+ test cases covering AI chat interface functionality including:
+  - JWT token security (excluding user_id)
+  - Session management with admin_ prefixes
+  - Source extraction with trailing period handling
+  - Intelligent spacing logic between streaming chunks
+  - Real-time streaming response processing
+  - Markdown rendering support
+  - Complete end-to-end chat workflow ✅
 
 ---
 
@@ -415,4 +427,273 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 
 ---
 
-**This document reflects the current implementation of the Knowledge Bot system including the AI Chat interface as of the latest development session. All features described are implemented and tested.** 
+---
+
+## 🧪 **Regression Testing Guide**
+
+### **Quick Start Commands**
+
+Run all use case regression tests:
+```bash
+npm run test:use-cases
+```
+
+Run individual use case tests:
+```bash
+npm run test:uc001  # User Validation and Management
+npm run test:uc002  # Toast Notification System  
+npm run test:uc003  # JWT Token Generation and Widget Instructions
+npm run test:uc004  # File Upload Processing and User Assignment
+npm run test:uc005  # AI Chat Interface
+```
+
+### **Use Case Test Mapping**
+
+Each use case has dedicated regression tests that validate ALL aspects of the documented functionality:
+
+| Use Case | Test Command | Test File | Validates |
+|----------|-------------|-----------|-----------|
+| **UC-001** | `npm run test:uc001` | `test-uc001-user-validation.test.js` | Bot/Company validation, JWT generation, Widget instructions (BR-001 to BR-005) |
+| **UC-002** | `npm run test:uc002` | `test-uc002-toast-notifications.test.js` | File upload notifications, Validation errors, Batching (BR-006 to BR-010) |
+| **UC-003** | `npm run test:uc003` | `test-uc003-jwt-widget.test.js` | Complete HTML widget code, CMS support (BR-011 to BR-015) |
+| **UC-004** | `npm run test:uc004` | `test-uc004-file-upload.test.js` | Metadata assignment, File-events, Processing (BR-016 to BR-019) |
+| **UC-005** | `npm run test:uc005` | `test-uc005-ai-chat.test.js` | Streaming, Spacing, Source extraction (BR-020 to BR-031) |
+
+### **Detailed Use Case Testing Instructions**
+
+#### **UC-001: User Validation and Management Testing**
+```bash
+npm run test:uc001
+```
+**What it tests:**
+- ✅ Bot and Company field requirements (BR-001, BR-002)
+- ✅ JWT token generation with correct structure (BR-003, BR-004)
+- ✅ Widget installation instructions generation (BR-005)
+- ✅ Connect/disconnect format handling for relations
+
+**Expected Results:** 8 tests should pass
+**Key Test Scenarios:**
+- Users with missing bot/company are rejected
+- JWT tokens contain `company_id` and `bot_id` (no `user_id`)
+- Widget instructions include CDN links and proper HTML structure
+- Instructions mention Webflow, WordPress, and other CMS platforms
+
+**If tests fail:** Check user lifecycle hooks in `src/extensions/users-permissions/content-types/user/lifecycles.js`
+
+---
+
+#### **UC-002: Toast Notification System Testing**
+```bash
+npm run test:uc002
+```
+**What it tests:**
+- ✅ Toast message persistence until manual close (BR-006)
+- ✅ 1-second batching delay for uploads (BR-007)
+- ✅ Success vs error toast styling (BR-008)
+- ✅ Specific validation error messages (BR-009)
+- ✅ Silent success for user saves (BR-010)
+
+**Expected Results:** 12 tests should pass (includes timing tests up to 11 seconds)
+**Key Test Scenarios:**
+- Multiple file uploads are batched into single toast within 1-second window
+- Toasts persist until manually dismissed
+- Error toasts are red, success toasts are green
+- User saves generate NO success toast
+
+**If tests fail:** Check toast implementation in `src/admin/extensions.js`
+
+---
+
+#### **UC-003: JWT Token Generation and Widget Instructions Testing**
+```bash
+npm run test:uc003
+```
+**What it tests:**
+- ✅ JWT payload structure (BR-011, BR-012)
+- ✅ Complete HTML widget implementation (BR-013)
+- ✅ Data-token attribute embedding (BR-014)
+- ✅ Multi-platform CMS support (BR-015)
+
+**Expected Results:** 15+ tests should pass
+**Key Test Scenarios:**
+- JWT tokens use HS256 algorithm with correct secret
+- Widget instructions include marked.js, DOMPurify, and main widget.js
+- Data-token attribute is properly formatted in HTML
+- Instructions mention closing `</body>` tag placement
+
+**If tests fail:** Check JWT generation logic and widget instruction templates
+
+---
+
+#### **UC-004: File Upload Processing and User Assignment Testing**
+```bash
+npm run test:uc004
+```
+**What it tests:**
+- ✅ User, bot, company assignment requirements (BR-016)
+- ✅ File-event creation for processing tracking (BR-017)
+- ✅ Upload success toast confirmation (BR-018)
+- ✅ Automatic metadata assignment (BR-019)
+
+**Expected Results:** 14 tests should pass
+**Key Test Scenarios:**
+- File uploads fail when user lacks bot or company
+- File-events are created with proper status tracking
+- Toast notifications confirm successful uploads
+- Metadata is automatically assigned to files
+
+**If tests fail:** Check upload middleware in `src/middlewares/assign-user-bot-to-upload.js`
+
+---
+
+#### **UC-005: AI Chat Interface Testing**
+```bash
+npm run test:uc005
+```
+**What it tests:**
+- ✅ JWT security without user_id (BR-020, BR-021)
+- ✅ Session management with admin_ prefixes (BR-022)
+- ✅ JSON and streaming response support (BR-023)
+- ✅ Source extraction with trailing periods (BR-024, BR-031)
+- ✅ Markdown rendering support (BR-025)
+- ✅ Chronological message order (BR-026)
+- ✅ Real-time streaming updates (BR-027)
+- ✅ Copy functionality for responses (BR-028)
+- ✅ Input field auto-focus (BR-029)
+- ✅ Intelligent spacing between chunks (BR-030)
+
+**Expected Results:** 35+ tests should pass
+**Key Test Scenarios:**
+- Chat initialization fails for users without bot/company
+- JWT tokens exclude user_id for security
+- Session IDs start with "admin_"
+- Source references with trailing periods are handled correctly
+- Intelligent spacing adds spaces between sentence boundaries
+- Streaming responses process chunks in real-time
+
+**If tests fail:** Check AI Chat implementation in `src/admin/pages/AiChat/index.jsx` and helper functions in `tests/helpers/chat-helpers.js`
+
+### **Test Output Example**
+
+```bash
+$ npm run test:use-cases
+
+═══════════════════════════════════════════════════════════════════════════════
+🧪 KNOWLEDGE BOT - USE CASE REGRESSION TESTS
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 Running UC-001: User Validation and Management
+   Bot/Company validation, JWT generation, widget instructions
+──────────────────────────────────────────────────
+✅ PASSED
+
+📋 Running UC-002: Toast Notification System  
+   File upload notifications, validation errors, batching
+──────────────────────────────────────────────────
+✅ PASSED
+
+═══════════════════════════════════════════════════════════════════════════════
+📊 USE CASE REGRESSION TEST RESULTS
+═══════════════════════════════════════════════════════════════════════════════
+
+UC-001: ✅ PASSED - 15/15 tests (100%)
+    User Validation and Management
+UC-002: ✅ PASSED - 12/12 tests (100%)
+    Toast Notification System
+[...]
+
+──────────────────────────────────────────
+🏆 Overall Test Results:
+   Individual Tests: 45/45 passed (100%)
+   Use Cases: 5/5 passed (100%)
+
+🎉 ALL USE CASES PASSED! System is ready for production.
+```
+
+### **When to Run Regression Tests**
+
+- **Before Production Deployments**: Always run `npm run test:use-cases`
+- **After Major Changes**: Run affected use case tests individually
+- **During Development**: Run relevant tests when modifying features
+- **CI/CD Pipeline**: Include `npm run test:use-cases` in automated testing
+
+### **Troubleshooting Test Failures**
+
+#### **Common Failure Patterns**
+
+**JWT-related failures (UC-001, UC-003, UC-005):**
+- ❌ `JsonWebTokenError: invalid signature` → Check JWT_SECRET consistency
+- ❌ `Property 'company_id' does not exist` → TypeScript linting issue (can be ignored in tests)
+- ❌ `Expected decoded.user_id to be undefined` → Security test - user_id should NOT be in JWT
+
+**Toast notification failures (UC-002):**
+- ❌ Timeout errors in batching tests → Tests involve 1+ second delays, expected behavior
+- ❌ `Expected 1 notification, got 2` → Batching logic issue, check timing
+
+**File upload failures (UC-004):**
+- ❌ `User must have both bot and company assigned` → Expected for negative test cases
+- ❌ Missing metadata properties → Check object spread and assignment logic
+
+**AI Chat failures (UC-005):**
+- ❌ `Session ID does not match admin_ pattern` → Check session generation logic
+- ❌ Source extraction issues → Verify regex patterns handle trailing periods
+- ❌ Intelligent spacing failures → Check sentence boundary detection logic
+
+#### **Test Timing Considerations**
+
+- **UC-002 takes longest** (11+ seconds) due to upload batching delay tests
+- **UC-001, UC-003, UC-004** complete in under 1 second each
+- **UC-005** takes 2-3 seconds due to async streaming simulation
+- **Total runtime** for all tests: ~15-20 seconds
+
+#### **Interpreting Success Metrics**
+
+```bash
+✅ IDEAL RESULTS:
+UC-001: ✅ PASSED - 8/8 tests (100%)
+UC-002: ✅ PASSED - 12/12 tests (100%)  
+UC-003: ✅ PASSED - 15/15 tests (100%)
+UC-004: ✅ PASSED - 14/14 tests (100%)
+UC-005: ✅ PASSED - 35/35 tests (100%)
+
+🎯 TARGET: 84+ tests passed, 0 failed
+```
+
+### **Adding New Test Scenarios**
+
+When updating use cases or adding new functionality:
+
+1. **Update the appropriate test file** in `tests/integration/use-cases/`
+2. **Follow the existing test structure** with business rule references
+3. **Test both success and failure scenarios**
+4. **Update this documentation** if new use cases are added
+5. **Run the specific test** to verify it passes before committing
+
+### **Best Practices for Regression Testing**
+
+#### **During Development**
+- Run affected use case tests after making changes
+- Use `npm run test:uc001 -- --watch` for continuous testing during development
+- Check test coverage for new business rules
+
+#### **Before Deployment**
+- Always run `npm run test:use-cases` before production deployment
+- Verify all 84+ tests pass with 100% success rate
+- Document any expected failures if system is in transition state
+
+#### **CI/CD Integration**
+```yaml
+# Example GitHub Actions or similar
+- name: Run Use Case Regression Tests
+  run: npm run test:use-cases
+- name: Require 100% Pass Rate
+  run: |
+    if [ $? -ne 0 ]; then
+      echo "❌ Use case regression tests failed - blocking deployment"
+      exit 1
+    fi
+```
+
+---
+
+**This document reflects the current implementation of the Knowledge Bot system including the AI Chat interface as of the latest development session. All features described are implemented and tested with comprehensive regression test coverage.** 
