@@ -381,9 +381,9 @@ const AiChat = () => {
                 if (!line.includes('[DONE]')) {
                   const data = line.substring(6); // Remove "data: " prefix
                   
-                  if (data === '') {
-                    // Empty data content represents a newline in the original text
-                    finalText += '\n';
+                                  if (data === '' || data.trim() === '') {
+                  // Empty data content OR whitespace-only data represents a newline in the original text
+                  finalText += '\n';
                   } else {
                     // Regular data content - concatenate as-is (spaces are already embedded)
                     finalText += data;
