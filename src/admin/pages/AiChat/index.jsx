@@ -354,9 +354,10 @@ const AiChat = () => {
                 if (!line.includes('[DONE]')) {
                   const data = line.substring(6); // Remove "data: " prefix
                   
-                  // Only treat completely empty data (no characters at all) as line breaks
-                  if (data === '') {
-                    // Track consecutive truly empty data lines for proper paragraph/line breaks
+                  // Treat empty data OR whitespace-only data as structural line breaks
+                  // But preserve single meaningful spaces (like between words)
+                  if (data === '' || (data.trim() === '' && data.length > 1)) {
+                    // Track consecutive empty/whitespace-only data lines for proper structure
                     consecutiveEmptyLines++;
                   } else {
                     // Add accumulated line breaks before new content
@@ -369,7 +370,7 @@ const AiChat = () => {
                       }
                       consecutiveEmptyLines = 0;
                     }
-                    // Add the actual data (including spaces, tabs, etc.)
+                    // Add the actual data (preserving single spaces and meaningful content)
                     chunkText += data;
                   }
                 }
