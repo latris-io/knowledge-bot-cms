@@ -32,136 +32,20 @@ class SessionManager {
   }
 }
 
-// Initialize markdown-it with same configuration as the working widget
+// Initialize markdown-it with clean, simple configuration
 const md = new MarkdownIt({
-  html: false,         // Disable HTML tags in source
+  html: false,         // Disable HTML tags in source for security
   xhtmlOut: false,     // Use HTML5
-  breaks: false,       // Don't convert \n to <br>
+  breaks: true,        // Convert \n to <br>
   langPrefix: 'language-',
-  linkify: false,      // Don't auto-convert URLs
-  typographer: false   // Don't use smart quotes
+  linkify: true,       // Auto-convert URLs to links
+  typographer: true    // Use smart quotes and other typographic improvements
 });
 
-// Industry-standard markdown parsing using markdown-it (matching widget approach)
-function parseMarkdown(text) {
+// Simple markdown rendering - let CSS handle all the styling
+function renderMarkdown(text) {
   if (!text) return '';
-  
-  console.log('🔍 Raw API Response:', text);
-  
-  // Preprocessing: Fix markdown structure issues (from working widget)
-  let processedText = text;
-  
-  // Pattern: Ensure proper header separation (headers need double line breaks)
-  processedText = processedText.replace(
-    /([^\n])\n(### )/g,
-    '$1\n\n$2'
-  );
-  
-  // Pattern: Fix header directly followed by dashes (no line break)
-  processedText = processedText.replace(
-    /(### [^\n]+)-\s*\*\*/g,
-    '$1\n\n- **'
-  );
-  
-  // Pattern: Fix run-together list items (dash followed by bold item)
-  processedText = processedText.replace(
-    /(\*\*[^*]+\*\*[^-\n]*)-\s*\*\*/g,
-    '$1\n- **'
-  );
-  
-  // Pattern: Fix headers immediately following content (no line break)
-  processedText = processedText.replace(
-    /([^.\n])(### )/g,
-    '$1\n\n$2'
-  );
-  
-  // Pattern: Fix the specific issue from user's example
-  // "### Bell Meade Office Hours- **Monday**" → "### Bell Meade Office Hours\n\n- **Monday**"
-  processedText = processedText.replace(
-    /(### [^-\n]+)-\s*(\*\*[^*]+\*\*)/g,
-    '$1\n\n- $2'
-  );
-  
-  // Pattern: Fix time followed by header (e.g., "4:30pm### Additional")
-  processedText = processedText.replace(
-    /(\d+:\d+\w+)(### )/g,
-    '$1\n\n$2'
-  );
-  
-  // Pattern: Fix general run-together content with headers
-  processedText = processedText.replace(
-    /([a-zA-Z0-9.!?])(### )/g,
-    '$1\n\n$2'
-  );
-  
-  // Pattern: Ensure proper line breaks between list items
-  // Handle cases where list items are separated by periods, spaces, or insufficient breaks
-  processedText = processedText.replace(
-    /(\n- [^\n]+[.!?])\s*(\n- )/g,
-    '$1\n$2'
-  );
-  
-  // Pattern: Fix missing line breaks between list items when they run together
-  processedText = processedText.replace(
-    /(\n- [^-\n]*[.!?])\s*- \*\*/g,
-    '$1\n- **'
-  );
-  
-  // Pattern: More aggressive list item separation - handle periods followed by dashes
-  processedText = processedText.replace(
-    /([.!?])-\s*\*\*/g,
-    '$1\n- **'
-  );
-  
-  // Pattern: Handle periods followed by text followed by dashes  
-  processedText = processedText.replace(
-    /([.!?])\s*([A-Z][^.!?]*[.!?])\s*-\s*\*\*/g,
-    '$1\n\n$2\n- **'
-  );
-  
-  // Pattern: List ending followed by bold text (common in our LLM output)
-  // This adds extra blank lines to ensure proper list termination
-  processedText = processedText.replace(
-    /(\n- [^\n]+\n+)(\*\*[^*]+\*\*:)/g,
-    '$1\n$2'
-  );
-  
-  // Pattern: Consecutive bold items need separation
-  // This ensures proper spacing between bold items like "**Tricky Word**:" and "**Test Date**:"
-  processedText = processedText.replace(
-    /(\*\*[^*]+\*\*:[^\n]*\n+)(\*\*[^*]+\*\*:)/g,
-    '$1\n$2'
-  );
-  
-  // Pattern: Text followed by header needs proper separation
-  processedText = processedText.replace(
-    /([.!?])\s*(###)/g,
-    '$1\n\n$2'
-  );
-  
-  console.log('[Widget-Style Parser] Processed text:', processedText);
-  
-  // Use markdown-it with the same configuration as the working widget
-  let html = md.render(processedText);
-  
-  // Apply custom styling to match the design system
-  html = html
-    .replace(/<h1>/g, '<h1 style="margin: 1.5rem 0 1rem 0; font-size: 1.375rem; font-weight: 600; color: #1d1d1f; letter-spacing: -0.01em;">')
-    .replace(/<h2>/g, '<h2 style="margin: 1.5rem 0 1rem 0; font-size: 1.25rem; font-weight: 600; color: #1d1d1f; letter-spacing: -0.01em;">')
-    .replace(/<h3>/g, '<h3 style="margin: 1.5rem 0 1rem 0; font-size: 1.125rem; font-weight: 600; color: #1d1d1f; letter-spacing: -0.01em;">')
-    .replace(/<strong>/g, '<strong style="font-weight: 600; color: #1d1d1f;">')
-    .replace(/<ul>/g, '<ul style="margin: 1rem 0; padding-left: 1.5rem;">')
-    .replace(/<ol>/g, '<ol style="margin: 1rem 0; padding-left: 1.5rem;">')
-    .replace(/<li>/g, '<li style="margin: 0.5rem 0; line-height: 1.6;">')
-    .replace(/<p>/g, '<p style="margin: 1rem 0; line-height: 1.6; color: #1d1d1f;">')
-    .replace(/<pre>/g, '<pre style="background: rgba(0, 0, 0, 0.06); padding: 1rem; border-radius: 8px; margin: 1rem 0; overflow-x: auto; font-family: Monaco, monospace; font-size: 0.9em; color: #1d1d1f; line-height: 1.4;">')
-    .replace(/<code>/g, '<code style="background: rgba(0, 0, 0, 0.06); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: Monaco, monospace; font-size: 0.9em; color: #1d1d1f;">')
-    .replace(/<blockquote>/g, '<blockquote style="border-left: 4px solid #007aff; padding-left: 1rem; margin: 1rem 0; font-style: italic; color: #666;">')
-    .replace(/<a/g, '<a style="color: #007aff; text-decoration: none;" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'"');
-  
-  console.log('[Widget-Style Parser] Output HTML:', html);
-  
-  return html;
+  return md.render(text);
 }
 
 // Extract sources from response text (same logic as widget)
@@ -222,36 +106,6 @@ const AiChat = () => {
   // Real user data state
   const [user, setUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
-
-  // Process HTML content to remove conflicting inline styles for glassmorphism theme
-  const processHtmlForGlasmorphism = (htmlContent) => {
-    if (!htmlContent) return htmlContent;
-    
-    // More aggressive approach: completely strip all style attributes
-    // This ensures no inline styles can override our glassmorphism CSS
-    let processedHtml = htmlContent
-      // Remove entire style attributes (most comprehensive approach)
-      .replace(/\s*style\s*=\s*"[^"]*"/gi, '')
-      .replace(/\s*style\s*=\s*'[^']*'/gi, '')
-      // Backup: remove specific problematic style properties (in case above misses some)
-      .replace(/color\s*:\s*[^;]+;?/gi, '')
-      .replace(/background(?:-color)?\s*:\s*[^;]+;?/gi, '')
-      .replace(/font-(?:weight|size)\s*:\s*[^;]+;?/gi, '')
-      .replace(/(?:margin|padding)\s*:\s*[^;]+;?/gi, '')
-      .replace(/line-height\s*:\s*[^;]+;?/gi, '')
-      .replace(/letter-spacing\s*:\s*[^;]+;?/gi, '')
-      // Clean up any remaining empty style attributes
-      .replace(/\s*style\s*=\s*['"]\s*['"]/gi, '')
-      // Clean up multiple spaces
-      .replace(/\s+/g, ' ')
-      .trim();
-    
-    console.log('🎨 [Glassmorphism] Original HTML length:', htmlContent.length);
-    console.log('🎨 [Glassmorphism] Processed HTML length:', processedHtml.length);
-    console.log('🎨 [Glassmorphism] Style attributes removed');
-    
-    return processedHtml;
-  };
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -522,7 +376,7 @@ const AiChat = () => {
           console.log('[AI Chat] Content for markdown parsing:', cleanedText);
 
           // Apply HTML processing only to the final complete content
-          const finalHtml = processHtmlForGlasmorphism(parseMarkdown(cleanedText));
+          const finalHtml = renderMarkdown(cleanedText);
           console.log('[AI Chat] Final HTML after processing:', finalHtml);
 
           // Update with final processed content
@@ -569,7 +423,7 @@ const AiChat = () => {
         
         const sources = extractSources(data.response);
         const cleanedText = data.response.replace(/\[source: .+?\]/g, '');
-        const finalHtml = processHtmlForGlasmorphism(parseMarkdown(cleanedText));
+        const finalHtml = renderMarkdown(cleanedText);
         
         setMessages(prevMessages =>
           prevMessages.map(msg =>
@@ -1075,7 +929,7 @@ const AiChat = () => {
                           </pre>
                         </div>
                       ) : (
-                        <div className="message-content" dangerouslySetInnerHTML={{ __html: processHtmlForGlasmorphism(message.content) }} />
+                        <div className="message-content" dangerouslySetInnerHTML={{ __html: message.content }} />
                       )}
                     </div>
                   )}
