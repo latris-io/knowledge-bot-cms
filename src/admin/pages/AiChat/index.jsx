@@ -1063,41 +1063,44 @@ const AiChat = () => {
                           </pre>
                         </div>
                       ) : (
-                        <div dangerouslySetInnerHTML={{ __html: message.content }} />
+                        <div className="message-content" dangerouslySetInnerHTML={{ __html: message.content }} />
                       )}
                     </div>
                   )}
                 
-                {/* Sources - Collapsible */}
+                {/* Sources - Glassmorphism Style */}
                 {message.sources && message.sources.length > 0 && (
                   <details style={{
-                    marginTop: '16px',
-                    background: 'rgba(0, 122, 255, 0.08)',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    border: '1px solid rgba(0, 122, 255, 0.2)'
+                    marginTop: '20px',
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    backdropFilter: 'blur(30px) saturate(1.2)',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    boxShadow: '0 2px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
                   }}>
                     <summary style={{
                       cursor: 'pointer',
                       fontWeight: '600',
-                      color: '#007aff',
-                      marginBottom: '8px',
+                      color: 'rgba(255, 255, 255, 0.8)',
+                      marginBottom: '12px',
                       outline: 'none',
                       userSelect: 'none',
-                      fontSize: '12px',
+                      fontSize: '13px',
                       textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
+                      letterSpacing: '0.08em',
+                      transition: 'color 0.2s ease'
                     }}>
                       📚 Sources ({message.sources.length})
                     </summary>
                     <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
                       {message.sources.map((source, idx) => (
                         <li key={idx} style={{ 
-                          margin: '4px 0', 
-                          lineHeight: '1.4', 
-                          color: '#666',
-                          fontSize: '13px'
+                          margin: '6px 0', 
+                          lineHeight: '1.5', 
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          fontSize: '14px'
                         }}>
                           {typeof source === 'string' ? source : source.title || source.text || source}
                         </li>
@@ -1107,10 +1110,11 @@ const AiChat = () => {
                 )}
                 
                 <div style={{
-                  fontSize: '11px',
-                  color: '#86868b',
-                  marginTop: '8px',
-                  fontVariantNumeric: 'tabular-nums'
+                  fontSize: '12px',
+                  color: 'rgba(255, 255, 255, 0.4)',
+                  marginTop: '12px',
+                  fontVariantNumeric: 'tabular-nums',
+                  letterSpacing: '0.02em'
                 }}>
                   {message.timestamp}
                 </div>
@@ -1269,6 +1273,130 @@ const AiChat = () => {
           @keyframes holographicFlow {
             0% { opacity: 0.6; transform: translateX(-50%); }
             100% { opacity: 1; transform: translateX(50%); }
+          }
+
+          /* Message Content Glassmorphism Styling */
+          .message-content h1, .message-content h2, .message-content h3, 
+          .message-content h4, .message-content h5, .message-content h6 {
+            color: rgba(255, 255, 255, 0.95) !important;
+            font-weight: 600 !important;
+            margin: 20px 0 12px 0 !important;
+            line-height: 1.3 !important;
+            letter-spacing: -0.02em !important;
+          }
+          
+          .message-content h1 { font-size: 24px !important; }
+          .message-content h2 { font-size: 20px !important; }
+          .message-content h3 { font-size: 18px !important; }
+          .message-content h4 { font-size: 16px !important; }
+          .message-content h5 { font-size: 15px !important; }
+          .message-content h6 { font-size: 14px !important; }
+          
+          .message-content p {
+            color: rgba(255, 255, 255, 0.85) !important;
+            line-height: 1.6 !important;
+            margin: 12px 0 !important;
+            font-size: 15px !important;
+          }
+          
+          .message-content strong, .message-content b {
+            color: rgba(255, 255, 255, 0.95) !important;
+            font-weight: 600 !important;
+          }
+          
+          .message-content em, .message-content i {
+            color: rgba(255, 255, 255, 0.8) !important;
+            font-style: italic !important;
+          }
+          
+          .message-content ul, .message-content ol {
+            color: rgba(255, 255, 255, 0.85) !important;
+            margin: 12px 0 !important;
+            padding-left: 20px !important;
+          }
+          
+          .message-content li {
+            color: rgba(255, 255, 255, 0.85) !important;
+            margin: 6px 0 !important;
+            line-height: 1.5 !important;
+          }
+          
+          .message-content li::marker {
+            color: rgba(255, 255, 255, 0.6) !important;
+          }
+          
+          .message-content code {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: rgba(255, 255, 255, 0.9) !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
+            font-family: 'Monaco', 'Consolas', monospace !important;
+            font-size: 13px !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+          }
+          
+          .message-content pre {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: rgba(255, 255, 255, 0.9) !important;
+            padding: 16px !important;
+            border-radius: 8px !important;
+            overflow-x: auto !important;
+            margin: 16px 0 !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            font-family: 'Monaco', 'Consolas', monospace !important;
+            font-size: 13px !important;
+            line-height: 1.4 !important;
+          }
+          
+          .message-content pre code {
+            background: none !important;
+            border: none !important;
+            padding: 0 !important;
+            color: inherit !important;
+          }
+          
+          .message-content blockquote {
+            border-left: 3px solid rgba(255, 255, 255, 0.3) !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            padding: 12px 16px !important;
+            margin: 16px 0 !important;
+            border-radius: 0 8px 8px 0 !important;
+            color: rgba(255, 255, 255, 0.8) !important;
+            font-style: italic !important;
+          }
+          
+          .message-content a {
+            color: rgba(120, 119, 198, 0.9) !important;
+            text-decoration: underline !important;
+            text-decoration-color: rgba(120, 119, 198, 0.5) !important;
+            transition: color 0.2s ease !important;
+          }
+          
+          .message-content a:hover {
+            color: rgba(120, 119, 198, 1) !important;
+            text-decoration-color: rgba(120, 119, 198, 0.8) !important;
+          }
+          
+          .message-content table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+            margin: 16px 0 !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-radius: 8px !important;
+            overflow: hidden !important;
+          }
+          
+          .message-content th, .message-content td {
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            padding: 8px 12px !important;
+            color: rgba(255, 255, 255, 0.85) !important;
+            text-align: left !important;
+          }
+          
+          .message-content th {
+            background: rgba(255, 255, 255, 0.1) !important;
+            font-weight: 600 !important;
+            color: rgba(255, 255, 255, 0.95) !important;
           }
           
           @keyframes headerSweep {
