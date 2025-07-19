@@ -374,6 +374,9 @@ const AiChat = () => {
                     chunkText += data;
                   }
                 }
+              } else if (line.trim() === '') {
+                // Handle empty lines between SSE data lines as structural breaks
+                consecutiveEmptyLines++;
               }
             }
             
