@@ -462,117 +462,70 @@ const AiChat = () => {
 
       const contentType = response.headers.get('content-type');
 
-      // Handle Server-Sent Events (SSE) response - SAME APPROACH AS WIDGET
-      if (contentType && contentType.includes('text/event-stream')) {
-        // Handle streaming response
-        if (response.body) {
-          console.log('[AI Chat] Processing streaming response');
-          const reader = response.body.getReader();
-          const decoder = new TextDecoder();
-          let accumulatedText = '';
-          let chunkCount = 0;
+      // Handle different response types
+      if (contentType && contentType.includes('text/event-stream') && response.body) {
+        console.log('[AI Chat] Processing streaming response');
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedText = '';
+        let chunkCount = 0;
 
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              
-              if (done) {
-                console.log(`[AI Chat] Stream completed after ${chunkCount} chunks`);
-                console.log(`[AI Chat] Final accumulated text length: ${accumulatedText.length}`);
-                break;
-              }
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) {
+              console.log(`[AI Chat] Stream completed after ${chunkCount} chunks`);
+              console.log(`[AI Chat] Final accumulated text length: ${accumulatedText.length}`);
+              break;
+            }
 
-              chunkCount++;
-              const chunk = decoder.decode(value, { stream: true });
-              console.log(`[AI Chat] Chunk ${chunkCount}: "${chunk}"`);
+            chunkCount++;
+            const chunk = decoder.decode(value, { stream: true });
+            console.log(`[AI Chat] Chunk ${chunkCount}: "${chunk}"`);
 
-              // Extract data from Server-Sent Events format
-              const lines = chunk.split('\n');
-              let chunkText = '';
-              
-              for (const line of lines) {
-                if (line.startsWith('data: ') && !line.includes('[DONE]')) {
-                  chunkText += line.substring(6); // Remove "data: " prefix
-                }
-              }
-
-              if (chunkText) {
-                accumulatedText += chunkText;
-                
-                // Update the message with raw text (no processing during streaming)
-                setMessages(prevMessages =>
-                  prevMessages.map(msg =>
-                    msg.id === assistantMessage.id
-                      ? { ...msg, content: accumulatedText, isLoading: false }
-                      : msg
-                  )
-                );
-
-                // Show content detected message only once
-                if (chunkCount === 1) {
-                  console.log('[AI Chat] Response content detected, hiding loading spinner');
-                }
+            // Extract data from Server-Sent Events format
+            const lines = chunk.split('\n');
+            let chunkText = '';
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ') && !line.includes('[DONE]')) {
+                chunkText += line.substring(6); // Remove "data: " prefix
               }
             }
 
-            // Process the complete text only after streaming is done
-            console.log('[AI Chat] Stream complete, parsing final markdown');
-            
-            // Extract sources and clean text
-            const sources = extractSources(accumulatedText);
-            const cleanedText = accumulatedText.replace(/\[source: .+?\]/g, '');
-            console.log('[AI Chat] Content for markdown parsing:', cleanedText);
+            if (chunkText) {
+              accumulatedText += chunkText;
+              
+              // Update the message with raw text (no processing during streaming)
+              setMessages(prevMessages =>
+                prevMessages.map(msg =>
+                  msg.id === assistantMessage.id
+                    ? { ...msg, content: accumulatedText, isLoading: false }
+                    : msg
+                )
+              );
 
-            // Apply HTML processing only to the final complete content
-            const finalHtml = processHtmlForGlasmorphism(parseMarkdown(cleanedText));
-            console.log('[AI Chat] Final HTML after processing:', finalHtml);
-
-            // Update with final processed content
-            setMessages(prevMessages =>
-              prevMessages.map(msg =>
-                msg.id === assistantMessage.id
-                  ? { 
-                      ...msg, 
-                      content: finalHtml,
-                      sources: sources.map((src, idx) => ({ 
-                        id: idx + 1, 
-                        text: src, 
-                        title: src.length > 60 ? src.substring(0, 60) + '...' : src 
-                      })),
-                      isLoading: false 
-                    }
-                  : msg
-              )
-            );
-
-            // Refocus input field after streaming response is complete
-            setTimeout(() => {
-              if (textareaRef.current) {
-                textareaRef.current.focus();
+              // Show content detected message only once
+              if (chunkCount === 1) {
+                console.log('[AI Chat] Response content detected, hiding loading spinner');
               }
-            }, 100);
-
-          } catch (streamError) {
-            console.error('[AI Chat] Stream reading error:', streamError);
-            setMessages(prevMessages =>
-              prevMessages.map(msg =>
-                msg.id === assistantMessage.id
-                  ? { ...msg, content: 'Error reading response stream', isLoading: false }
-                  : msg
-              )
-            );
-          } finally {
-            reader.releaseLock();
+            }
           }
-        } else {
-          // Handle non-streaming JSON response
-          const data = await response.json();
-          console.log('🔍 Raw API Response:', data.response);
+
+          // Process the complete text only after streaming is done
+          console.log('[AI Chat] Stream complete, parsing final markdown');
           
-          const sources = extractSources(data.response);
-          const cleanedText = data.response.replace(/\[source: .+?\]/g, '');
+          // Extract sources and clean text
+          const sources = extractSources(accumulatedText);
+          const cleanedText = accumulatedText.replace(/\[source: .+?\]/g, '');
+          console.log('[AI Chat] Content for markdown parsing:', cleanedText);
+
+          // Apply HTML processing only to the final complete content
           const finalHtml = processHtmlForGlasmorphism(parseMarkdown(cleanedText));
-          
+          console.log('[AI Chat] Final HTML after processing:', finalHtml);
+
+          // Update with final processed content
           setMessages(prevMessages =>
             prevMessages.map(msg =>
               msg.id === assistantMessage.id
@@ -590,14 +543,59 @@ const AiChat = () => {
             )
           );
 
-          // Refocus input field after JSON response is complete
+          // Refocus input field after streaming response is complete
           setTimeout(() => {
             if (textareaRef.current) {
               textareaRef.current.focus();
             }
           }, 100);
+
+        } catch (streamError) {
+          console.error('[AI Chat] Stream reading error:', streamError);
+          setMessages(prevMessages =>
+            prevMessages.map(msg =>
+              msg.id === assistantMessage.id
+                ? { ...msg, content: 'Error reading response stream', isLoading: false }
+                : msg
+            )
+          );
+        } finally {
+          reader.releaseLock();
         }
-      
+      } else {
+        // Handle non-streaming JSON response
+        const data = await response.json();
+        console.log('🔍 Raw API Response:', data.response);
+        
+        const sources = extractSources(data.response);
+        const cleanedText = data.response.replace(/\[source: .+?\]/g, '');
+        const finalHtml = processHtmlForGlasmorphism(parseMarkdown(cleanedText));
+        
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg.id === assistantMessage.id
+              ? { 
+                  ...msg, 
+                  content: finalHtml,
+                  sources: sources.map((src, idx) => ({ 
+                    id: idx + 1, 
+                    text: src, 
+                    title: src.length > 60 ? src.substring(0, 60) + '...' : src 
+                  })),
+                  isLoading: false 
+                }
+              : msg
+          )
+        );
+
+        // Refocus input field after JSON response is complete
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+          }
+        }, 100);
+      }
+        
     } catch (error) {
       console.error('[AI Chat] Error calling retrieval service:', error);
       setMessages(prev => prev.map(msg => 
