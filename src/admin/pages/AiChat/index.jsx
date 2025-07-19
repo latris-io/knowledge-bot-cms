@@ -345,7 +345,7 @@ const AiChat = () => {
             allChunks.push(chunk);
 
             // Extract data from Server-Sent Events format 
-            // The spaces and newlines are already properly embedded in the data content
+            // Handle empty data content as structural breaks, concatenate regular content as-is
             const lines = chunk.split('\n');
             let chunkText = '';
             
@@ -353,8 +353,14 @@ const AiChat = () => {
               if (line.startsWith('data: ')) {
                 if (!line.includes('[DONE]')) {
                   const data = line.substring(6); // Remove "data: " prefix
-                  // Just concatenate all data content as-is - spaces and structure are already embedded
-                  chunkText += data;
+                  
+                  if (data === '') {
+                    // Empty data content represents a newline in the original text
+                    chunkText += '\n';
+                  } else {
+                    // Regular data content - concatenate as-is (spaces are already embedded)
+                    chunkText += data;
+                  }
                 }
               }
             }
