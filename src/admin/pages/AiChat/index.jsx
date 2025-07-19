@@ -344,48 +344,18 @@ const AiChat = () => {
             // Store raw chunk for final processing
             allChunks.push(chunk);
 
-            // Extract data from Server-Sent Events format and reconstruct original structure
+            // Extract data from Server-Sent Events format 
+            // The spaces and newlines are already properly embedded in the data content
             const lines = chunk.split('\n');
             let chunkText = '';
-            let consecutiveEmptyLines = 0;
             
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 if (!line.includes('[DONE]')) {
                   const data = line.substring(6); // Remove "data: " prefix
-                  
-                  // Treat empty data OR whitespace-only data as structural line breaks
-                  // But preserve single meaningful spaces (like between words)
-                  if (data === '' || (data.trim() === '' && data.length > 1)) {
-                    // Track consecutive empty/whitespace-only data lines for proper structure
-                    consecutiveEmptyLines++;
-                  } else {
-                    // Add accumulated line breaks before new content
-                    if (consecutiveEmptyLines > 0) {
-                      // Even single empty line should create proper separation for list items
-                      if (consecutiveEmptyLines >= 2) {
-                        chunkText += '\n\n'; // Double newline for paragraph break
-                      } else {
-                        chunkText += '\n'; // Single newline for line break
-                      }
-                      consecutiveEmptyLines = 0;
-                    }
-                    // Add the actual data (preserving single spaces and meaningful content)
-                    chunkText += data;
-                  }
+                  // Just concatenate all data content as-is - spaces and structure are already embedded
+                  chunkText += data;
                 }
-              } else if (line.trim() === '') {
-                // Handle empty lines between SSE data lines as structural breaks
-                consecutiveEmptyLines++;
-              }
-            }
-            
-            // Handle any trailing empty lines
-            if (consecutiveEmptyLines > 0) {
-              if (consecutiveEmptyLines >= 2) {
-                chunkText += '\n\n';
-              } else {
-                chunkText += '\n';
               }
             }
             
