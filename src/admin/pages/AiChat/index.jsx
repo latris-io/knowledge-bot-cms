@@ -914,33 +914,39 @@ const AiChat = () => {
             </div>
           </div>
             
-            {/* Debug Toggle */}
-            <button
-              onClick={() => setDebugMode(!debugMode)}
-              style={{
-                background: debugMode ? '#007aff' : 'rgba(0, 0, 0, 0.06)',
-                color: debugMode ? 'white' : '#86868b',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '8px 16px',
-                fontSize: '12px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {debugMode ? '🔍 RAW' : '🎨 FORMATTED'}
-            </button>
+          {/* Debug Toggle - Glassmorphism Style */}
+          <button
+            onClick={() => setDebugMode(!debugMode)}
+            style={{
+              background: debugMode ? 'linear-gradient(135deg, #7877c6 0%, #ff2d55 100%)' : 'rgba(255, 255, 255, 0.1)',
+              color: debugMode ? 'white' : 'rgba(255, 255, 255, 0.6)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '12px',
+              padding: '8px 16px',
+              fontSize: '12px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              backdropFilter: 'blur(20px)',
+              position: 'relative',
+              zIndex: 1
+            }}
+          >
+            {debugMode ? '🔍 RAW' : '🎨 FORMATTED'}
+          </button>
           </div>
 
-        {/* Chat Area */}
+        {/* Chat Area - Glassmorphism */}
         <div style={{
           flex: 1,
-          padding: '32px',
+          padding: '48px',
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: '24px'
+          gap: '32px',
+          position: 'relative',
+          background: 'rgba(255, 255, 255, 0.02)',
+          backdropFilter: 'blur(40px) saturate(1.2)',
         }}>
           {messages.map((message, index) => (
             <div
@@ -954,43 +960,88 @@ const AiChat = () => {
                 ...(message.role === 'user' ? { flexDirection: 'row-reverse' } : {})
               }}
             >
-              {/* Avatar */}
+              {/* Avatar - Glassmorphism */}
               <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '18px',
+                width: '48px',
+                height: '48px',
+                borderRadius: '24px',
                 background: message.role === 'user' 
                   ? 'linear-gradient(135deg, #34c759 0%, #30d158 100%)'
-                  : 'linear-gradient(135deg, #007aff 0%, #5856d6 100%)',
+                  : 'linear-gradient(135deg, #7877c6 0%, #ff2d55 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: 'white',
-                fontSize: '14px',
-                fontWeight: '600',
+                fontSize: '18px',
+                fontWeight: '700',
                 flexShrink: 0,
                 boxShadow: message.role === 'user'
-                  ? '0 2px 12px rgba(52, 199, 89, 0.2)'
-                  : '0 2px 12px rgba(0, 122, 255, 0.2)'
+                  ? '0 4px 16px rgba(52, 199, 89, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+                  : '0 4px 16px rgba(120, 119, 198, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                animation: 'avatarGlow 4s ease-in-out infinite alternate',
+                position: 'relative',
+                overflow: 'hidden'
               }}>
+                {/* Avatar Shine Effect */}
+                <div style={{
+                  position: 'absolute',
+                  top: '-50%',
+                  left: '-50%',
+                  width: '200%',
+                  height: '200%',
+                  background: 'linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.15) 50%, transparent 70%)',
+                  animation: 'avatarShine 3s linear infinite'
+                }} />
                 {message.role === 'user' ? 'U' : 'AI'}
               </div>
 
-              {/* Message Content */}
+              {/* Message Content - Glassmorphism */}
               <div style={{
                 background: message.role === 'user'
-                  ? 'linear-gradient(135deg, rgba(0, 122, 255, 0.1) 0%, rgba(88, 86, 214, 0.1) 100%)'
-                  : 'rgba(255, 255, 255, 0.9)',
-                backdropFilter: 'blur(20px)',
+                  ? 'rgba(120, 119, 198, 0.12)'
+                  : 'rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(60px) saturate(1.8) brightness(1.1)',
                 border: message.role === 'user'
-                  ? '0.5px solid rgba(0, 122, 255, 0.2)'
-                  : '0.5px solid rgba(0, 0, 0, 0.06)',
-                borderRadius: '16px',
-                padding: '20px 24px',
+                  ? '1px solid rgba(120, 119, 198, 0.25)'
+                  : '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '20px',
+                padding: '24px 28px',
                 maxWidth: '70%',
-                boxShadow: '0 1px 8px rgba(0, 0, 0, 0.04)',
-                transition: 'all 0.3s ease'
+                boxShadow: `
+                  0 4px 24px rgba(0, 0, 0, 0.2),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                  0 0 0 1px rgba(255, 255, 255, 0.05)`,
+                transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                position: 'relative',
+                overflow: 'hidden'
               }}>
+                {/* Content Shimmer Effect */}
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: '-100%',
+                  width: '100%',
+                  height: '100%',
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%)',
+                  animation: 'contentShimmer 5s ease-in-out infinite'
+                }} />
+                
+                {/* Border Glow Effect */}
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '1px',
+                  background: `linear-gradient(90deg, 
+                    transparent 0%, 
+                    rgba(120, 119, 198, 0.3) 25%, 
+                    rgba(255, 45, 85, 0.3) 50%, 
+                    rgba(52, 199, 89, 0.3) 75%, 
+                    transparent 100%)`,
+                  animation: 'borderGlow 3s ease-in-out infinite alternate'
+                }} />
                 {message.isLoading ? (
                   <div style={{
                     display: 'flex',
@@ -1025,16 +1076,18 @@ const AiChat = () => {
                   </div>
                                   ) : (
                     <div style={{
-                      fontSize: '15px',
-                      lineHeight: '1.5',
-                      color: '#1d1d1f',
-                      fontWeight: '400'
+                      fontSize: '16px',
+                      lineHeight: '1.6',
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      fontWeight: '400',
+                      position: 'relative',
+                      zIndex: 1
                     }}>
                       {debugMode && message.rawContent ? (
                         <div>
                           <div style={{
                             fontSize: '11px',
-                            color: '#86868b',
+                            color: 'rgba(255, 255, 255, 0.6)',
                             marginBottom: '8px',
                             fontWeight: '600',
                             textTransform: 'uppercase',
@@ -1043,14 +1096,17 @@ const AiChat = () => {
                             Raw Response:
                           </div>
                           <pre style={{
-                            background: 'rgba(0, 0, 0, 0.06)',
+                            background: 'rgba(255, 255, 255, 0.1)',
                             padding: '12px',
                             borderRadius: '8px',
                             fontSize: '13px',
                             fontFamily: 'Monaco, monospace',
                             whiteSpace: 'pre-wrap',
                             overflow: 'auto',
-                            maxHeight: '300px'
+                            maxHeight: '300px',
+                            color: 'rgba(255, 255, 255, 0.8)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            backdropFilter: 'blur(20px)'
                           }}>
                             {message.rawContent}
                           </pre>
@@ -1113,22 +1169,65 @@ const AiChat = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
+        {/* Input Area - Glassmorphism */}
         <div style={{
-          padding: '24px 32px 32px',
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(30px)',
-          borderTop: '0.5px solid rgba(0, 0, 0, 0.06)'
+          padding: '32px 48px 48px',
+          background: 'rgba(0, 0, 0, 0.2)',
+          backdropFilter: 'blur(60px) brightness(1.2)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          position: 'relative'
         }}>
+          {/* Input Glow Effect */}
           <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '2px',
+            background: `linear-gradient(90deg, 
+              transparent 0%, 
+              rgba(120, 119, 198, 0.4) 25%, 
+              rgba(255, 45, 85, 0.4) 50%, 
+              rgba(52, 199, 89, 0.4) 75%, 
+              transparent 100%)`,
+            animation: 'inputGlow 5s ease-in-out infinite alternate'
+          }} />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
             position: 'relative',
-            background: 'rgba(255, 255, 255, 0.9)',
-            border: input ? '0.5px solid #007aff' : '0.5px solid rgba(0, 0, 0, 0.1)',
-            borderRadius: '20px',
-            padding: '16px 56px 16px 20px',
-            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-            boxShadow: input ? '0 0 0 3px rgba(0, 122, 255, 0.1), 0 4px 20px rgba(0, 0, 0, 0.08)' : '0 2px 16px rgba(0, 0, 0, 0.04)'
+            background: 'rgba(255, 255, 255, 0.08)',
+            border: input ? '1px solid rgba(120, 119, 198, 0.4)' : '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '24px',
+            padding: '20px 24px',
+            transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+            boxShadow: input 
+              ? '0 0 0 4px rgba(120, 119, 198, 0.1), 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.25)'
+              : '0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+            backdropFilter: 'blur(60px) saturate(1.5) brightness(1.1)',
+            overflow: 'hidden',
+            ...(input ? {
+              background: 'rgba(255, 255, 255, 0.12)',
+              transform: 'translateY(-2px)'
+            } : {})
           }}>
+            {/* Animated Border Effect */}
+            {input && (
+              <div style={{
+                position: 'absolute',
+                top: '-2px',
+                left: '-2px',
+                right: '-2px',
+                bottom: '-2px',
+                background: 'linear-gradient(45deg, #7877c6, #ff2d55, #34c759, #ff9500, #7877c6)',
+                backgroundSize: '400% 400%',
+                borderRadius: '26px',
+                zIndex: -1,
+                opacity: 1,
+                animation: 'holographicBorder 3s linear infinite'
+              }} />
+            )}
             <textarea
               ref={textareaRef}
               value={input}
@@ -1137,16 +1236,16 @@ const AiChat = () => {
               placeholder="Message AI Assistant..."
               disabled={isLoading || !jwtToken || !user}
               style={{
-                width: '100%',
+                flex: 1,
                 border: 'none',
                 outline: 'none',
                 background: 'transparent',
-                fontSize: '15px',
+                fontSize: '16px',
                 fontFamily: 'inherit',
-                color: '#1d1d1f',
+                color: 'rgba(255, 255, 255, 0.9)',
                 resize: 'none',
-                minHeight: '20px',
-                maxHeight: '120px'
+                minHeight: '24px',
+                maxHeight: '150px'
               }}
               rows={1}
             />
@@ -1155,32 +1254,51 @@ const AiChat = () => {
               onClick={handleSend}
               disabled={isLoading || !input.trim()}
               style={{
-                position: 'absolute',
-                right: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: isLoading || !input.trim() || !jwtToken || !user ? '#86868b' : '#007aff',
+                background: isLoading || !input.trim() || !jwtToken || !user 
+                  ? 'rgba(255, 255, 255, 0.2)' 
+                  : 'linear-gradient(135deg, #7877c6 0%, #ff2d55 100%)',
                 border: 'none',
-                borderRadius: '16px',
-                width: '32px',
-                height: '32px',
+                borderRadius: '20px',
+                width: '40px',
+                height: '40px',
                 cursor: isLoading || !input.trim() || !jwtToken || !user ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                transition: 'all 0.2s ease',
-                color: 'white'
-              }}
+                transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                color: 'white',
+                boxShadow: isLoading || !input.trim() || !jwtToken || !user
+                  ? '0 2px 8px rgba(0, 0, 0, 0.2)'
+                  : '0 4px 12px rgba(120, 119, 198, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                position: 'relative',
+                overflow: 'hidden',
+                flexShrink: 0
+              }}>
+                {/* Button Shine Effect */}
+                {!isLoading && input.trim() && jwtToken && user && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '-50%',
+                    left: '-50%',
+                    width: '200%',
+                    height: '200%',
+                    background: 'linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%)',
+                    animation: 'buttonShine 2s linear infinite'
+                  }} />
+                )}
               onMouseEnter={(e) => {
                 if (!isLoading && input.trim() && jwtToken && user) {
-                  e.currentTarget.style.background = '#0056d6';
-                  e.currentTarget.style.transform = 'translateY(-50%) scale(1.05)';
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #8a89d0 0%, #ff4569 100%)';
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(120, 119, 198, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isLoading && input.trim() && jwtToken && user) {
-                  e.currentTarget.style.background = '#007aff';
-                  e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #7877c6 0%, #ff2d55 100%)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(120, 119, 198, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                 }
               }}
             >
