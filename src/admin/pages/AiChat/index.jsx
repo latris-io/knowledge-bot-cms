@@ -319,26 +319,41 @@ const AiChat = () => {
       // Handle different response types
       if (contentType && contentType.includes('text/event-stream') && response.body) {
         console.log('[AI Chat] Processing streaming response');
+        let chunkCount = 0;
+        let accumulatedText = '';
+        let allChunks = []; // Store all raw chunks
+
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let accumulatedText = '';
-        let chunkCount = 0;
 
         try {
           while (true) {
             const { done, value } = await reader.read();
-            
+
             if (done) {
               console.log(`[AI Chat] Stream completed after ${chunkCount} chunks`);
               console.log(`[AI Chat] Final accumulated text length: ${accumulatedText.length}`);
               break;
             }
 
-            chunkCount++;
             const chunk = decoder.decode(value, { stream: true });
-            console.log(`[AI Chat] Chunk ${chunkCount}: "${chunk}"`);
+            chunkCount++;
+            console.log(`[AI Chat] Chunk ${chunkCount}:`, JSON.stringify(chunk));
 
-            // Extract data from Server-Sent Events format
+            // Just store the raw chunk - no processing during streaming
+            allChunks.push(chunk);
+
+            // Show loading state during streaming
+            if (chunkCount === 1) {
+              console.log('[AI Chat] Response content detected, hiding loading spinner');
+            }
+          }
+
+          // Now process all chunks at once after streaming is complete
+          console.log('[AI Chat] Stream complete, reconstructing text from all chunks');
+          
+          // Reconstruct text from all collected chunks
+          for (const chunk of allChunks) {
             const lines = chunk.split('\n');
             let chunkText = '';
             
@@ -348,7 +363,6 @@ const AiChat = () => {
                   const data = line.substring(6); // Remove "data: " prefix
                   
                   // Simply add each data piece exactly as received
-                  // Empty data represents newlines in the original structure
                   if (data === '') {
                     chunkText += '\n';
                   } else {
@@ -357,29 +371,14 @@ const AiChat = () => {
                 }
               }
             }
-
-            if (chunkText) {
-              accumulatedText += chunkText;
-              
-              // Show raw accumulated text during streaming - NO PROCESSING
-              setMessages(prevMessages =>
-                prevMessages.map(msg =>
-                  msg.id === assistantMessage.id
-                    ? { ...msg, content: accumulatedText, isLoading: false }
-                    : msg
-                )
-              );
-
-              // Show content detected message only once
-              if (chunkCount === 1) {
-                console.log('[AI Chat] Response content detected, hiding loading spinner');
-              }
-            }
+            
+            accumulatedText += chunkText;
           }
-
-          // Process the complete text only after streaming is done
-          console.log('[AI Chat] Stream complete, parsing final markdown');
+          
           console.log('[AI Chat] Raw accumulated text:', JSON.stringify(accumulatedText));
+          
+          // Now process the complete text for final display
+          console.log('[AI Chat] Processing final markdown');
           
           // Extract sources and clean text
           const sources = extractSources(accumulatedText);
@@ -398,7 +397,7 @@ const AiChat = () => {
           const finalHtml = renderMarkdown(cleanedText);
           console.log('[AI Chat] Final HTML after processing:', finalHtml);
 
-          // Update with final processed content
+          // Update the message with final processed content
           setMessages(prevMessages =>
             prevMessages.map(msg =>
               msg.id === assistantMessage.id
@@ -415,8 +414,8 @@ const AiChat = () => {
                 : msg
             )
           );
-
-          // Refocus input field after streaming response is complete
+          
+          // Refocus input field after streaming is complete
           setTimeout(() => {
             if (textareaRef.current) {
               textareaRef.current.focus();
