@@ -223,6 +223,27 @@ const AiChat = () => {
   const [user, setUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
 
+  // Process HTML content to remove conflicting inline styles for glassmorphism theme
+  const processHtmlForGlasmorphism = (htmlContent) => {
+    if (!htmlContent) return htmlContent;
+    
+    // Remove problematic inline style properties that conflict with our glassmorphism theme
+    let processedHtml = htmlContent
+      .replace(/color:\s*#[0-9a-fA-F]{3,6};?/g, '') // Remove color styles
+      .replace(/background-color:\s*[^;]+;?/g, '') // Remove background colors
+      .replace(/background:\s*[^;]+;?/g, '') // Remove background styles
+      .replace(/font-weight:\s*[^;]+;?/g, '') // Remove font-weight to use our styles
+      .replace(/font-size:\s*[^;]+;?/g, '') // Remove font-size to use our styles
+      .replace(/margin:\s*[^;]+;?/g, '') // Remove margin to use our styles
+      .replace(/padding:\s*[^;]+;?/g, '') // Remove padding to use our styles
+      .replace(/line-height:\s*[^;]+;?/g, '') // Remove line-height to use our styles
+      .replace(/letter-spacing:\s*[^;]+;?/g, '') // Remove letter-spacing to use our styles
+      .replace(/style="\s*"/g, '') // Remove empty style attributes
+      .replace(/style=''/g, ''); // Remove empty style attributes with single quotes
+    
+    return processedHtml;
+  };
+
   // Scroll to bottom of messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1063,7 +1084,7 @@ const AiChat = () => {
                           </pre>
                         </div>
                       ) : (
-                        <div className="message-content" dangerouslySetInnerHTML={{ __html: message.content }} />
+                        <div className="message-content" dangerouslySetInnerHTML={{ __html: processHtmlForGlasmorphism(message.content) }} />
                       )}
                     </div>
                   )}
