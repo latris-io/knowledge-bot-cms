@@ -182,13 +182,13 @@ const AiChat = () => {
     }
   };
 
-  // Auto-resize textarea
-  useEffect(() => {
+  // Auto-resize textarea function (moved out of useEffect for better performance)
+  const resizeTextarea = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
     }
-  }, [input]);
+  };
 
   // Auto-focus textarea when it becomes enabled
   useEffect(() => {
@@ -198,6 +198,7 @@ const AiChat = () => {
       const focusTimer = setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.focus();
+          resizeTextarea(); // Initial resize when textarea becomes available
           console.log('🎯 Textarea focused - enabled state:', { isLoading, jwtToken: !!jwtToken, user: !!user });
         }
       }, 50);
@@ -1246,7 +1247,11 @@ const AiChat = () => {
             <textarea
               ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                // Resize textarea immediately for smooth typing experience
+                setTimeout(resizeTextarea, 0);
+              }}
               onKeyPress={handleKeyPress}
               placeholder="Message AI Assistant..."
               disabled={isLoading || !jwtToken || !user}
