@@ -9,35 +9,24 @@ let instance;
  */
 async function setupStrapi() {
   if (!instance) {
-    const testConfig = {
-      database: {
-        connection: {
-          client: 'sqlite',
-          connection: {
-            filename: path.join(__dirname, '..', 'temp', 'test.db')
-          },
-          useNullAsDefault: true
-        }
-      },
-      server: {
-        host: 'localhost',
-        port: 1338 // Use different port to avoid conflicts
-      },
-      autoReload: false,
-      environment: 'testing'
-    };
-
     // Ensure temp directory exists
     const tempDir = path.join(__dirname, '..', 'temp');
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
-    // Create Strapi instance
+    // Set up test environment
+    process.env.NODE_ENV = 'test';
+
+    // Create Strapi instance - it will use the test database configuration
     instance = await createStrapi({
-      ...testConfig,
+      appDir: path.join(__dirname, '..', '..'),
       distDir: path.join(__dirname, '..', '..', 'dist'),
-      appDir: path.join(__dirname, '..', '..')
+      autoReload: false,
+      serveAdminPanel: false,
+      admin: {
+        autoOpen: false,
+      },
     }).load();
 
     // Make strapi available globally
