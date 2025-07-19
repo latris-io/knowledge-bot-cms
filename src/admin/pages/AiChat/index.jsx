@@ -393,8 +393,10 @@ const AiChat = () => {
             }
           }
           
-          console.log('[AI Chat] Stream complete, applying final markdown formatting');
-          console.log('[AI Chat] Raw accumulated text:', JSON.stringify(finalText));
+          console.log('[AI Chat] ✅ Final reconstructed text:');
+          console.log(finalText);
+          console.log('[AI Chat] ✅ Text length:', finalText.length);
+          console.log('[AI Chat] ✅ Line count:', finalText.split('\n').length);
 
           // Now extract sources from the final complete text
           const sources = [];
@@ -409,12 +411,30 @@ const AiChat = () => {
           // Remove source references from content for display
           const contentWithoutSources = finalText.replace(sourceRegex, '').trim();
           
-          console.log('[AI Chat] Content for markdown parsing:', contentWithoutSources);
+          console.log('[AI Chat] ✅ Content after source removal:');
+          console.log(contentWithoutSources);
+          
+          // Verify markdown structure looks correct
+          const lines = contentWithoutSources.split('\n');
+          console.log('[AI Chat] 🔍 Markdown structure analysis:');
+          lines.forEach((line, i) => {
+            if (line.startsWith('#')) {
+              console.log(`  Line ${i + 1}: HEADER -> "${line}"`);
+            } else if (line.startsWith('-') || line.startsWith('*')) {
+              console.log(`  Line ${i + 1}: LIST ITEM -> "${line}"`);
+            } else if (line.trim() === '') {
+              console.log(`  Line ${i + 1}: EMPTY LINE`);
+            } else if (line.trim().length > 0) {
+              console.log(`  Line ${i + 1}: TEXT -> "${line}"`);
+            }
+          });
 
           // Apply markdown formatting to the complete final text
+          console.log('[AI Chat] 📝 Applying markdown-it processing...');
           const processedHtml = md.render(contentWithoutSources);
           
-          console.log('[AI Chat] Final HTML after processing:', processedHtml);
+          console.log('[AI Chat] ✅ Final HTML output:');
+          console.log(processedHtml);
 
           // Update the message with final processed content
           setMessages(prevMessages =>
