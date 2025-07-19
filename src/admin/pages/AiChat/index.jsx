@@ -343,8 +343,16 @@ const AiChat = () => {
             let chunkText = '';
             
             for (const line of lines) {
-              if (line.startsWith('data: ') && !line.includes('[DONE]')) {
-                chunkText += line.substring(6); // Remove "data: " prefix
+              if (line.startsWith('data: ')) {
+                if (!line.includes('[DONE]')) {
+                  const data = line.substring(6); // Remove "data: " prefix
+                  // Empty data lines represent newlines in the original markdown
+                  if (data === '') {
+                    chunkText += '\n';
+                  } else {
+                    chunkText += data;
+                  }
+                }
               }
             }
 
