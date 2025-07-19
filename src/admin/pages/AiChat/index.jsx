@@ -344,22 +344,42 @@ const AiChat = () => {
             // Store raw chunk for final processing
             allChunks.push(chunk);
 
-            // Also process this chunk for real-time display
+            // Extract data from Server-Sent Events format and reconstruct original structure
             const lines = chunk.split('\n');
             let chunkText = '';
+            let consecutiveEmptyLines = 0;
             
             for (const line of lines) {
               if (line.startsWith('data: ')) {
                 if (!line.includes('[DONE]')) {
                   const data = line.substring(6); // Remove "data: " prefix
                   
-                  // Simply add each data piece exactly as received
                   if (data === '') {
-                    chunkText += '\n';
+                    // Track consecutive empty data lines for proper paragraph breaks
+                    consecutiveEmptyLines++;
                   } else {
+                    // Add accumulated paragraph breaks before new content
+                    if (consecutiveEmptyLines > 0) {
+                      // Multiple consecutive empty lines = paragraph break in markdown
+                      if (consecutiveEmptyLines >= 2) {
+                        chunkText += '\n\n'; // Double newline for paragraph break
+                      } else {
+                        chunkText += '\n'; // Single newline for line break
+                      }
+                      consecutiveEmptyLines = 0;
+                    }
                     chunkText += data;
                   }
                 }
+              }
+            }
+            
+            // Handle any trailing empty lines
+            if (consecutiveEmptyLines > 0) {
+              if (consecutiveEmptyLines >= 2) {
+                chunkText += '\n\n';
+              } else {
+                chunkText += '\n';
               }
             }
             
@@ -390,28 +410,10 @@ const AiChat = () => {
           const sources = extractSources(accumulatedText);
           let cleanedText = accumulatedText.replace(/\[source: .+?\]/g, '');
           
-          // Targeted fixes for common streaming reconstruction issues
-          cleanedText = cleanedText
-            // Fix missing newlines before headers
-            .replace(/([^\n])(#{1,6}\s)/g, '$1\n\n$2')  // Add double newline before headers
-            // Fix missing newlines before list items after colons
-            .replace(/(:\s*)(- \*\*)/g, '$1\n$2')  // Add newline after colon before list items
-            // Fix missing newlines before regular list items
-            .replace(/([^:\n])(- \*\*)/g, '$1\n$2')  // Add newline before list items
-            // Fix missing spaces after sentences
-            .replace(/([.!?])([A-Z])/g, '$1 $2')  // Add space after sentence endings
-            // Fix leftover punctuation from source removal
-            .replace(/\s+\.$/, '.')  // Remove extra spaces before final period
-            .replace(/sourced from\s*\.$/, 'sourced from the knowledge base.')  // Fix "sourced from ."
-            // Conservative whitespace normalization
-            .replace(/[ ]{2,}/g, ' ')  // Multiple spaces to single space
-            .replace(/\n{4,}/g, '\n\n\n')  // More than 3 newlines to 3 max
-            .trim();
-          
-          console.log('[AI Chat] Content for markdown parsing:', cleanedText);
+          console.log('[AI Chat] Content for markdown parsing:', cleanedText.trim());
 
-          // Apply ONLY markdown-it processing - CSS handles all styling
-          const finalHtml = renderMarkdown(cleanedText);
+          // Apply ONLY markdown-it processing - no regex manipulation
+          const finalHtml = renderMarkdown(cleanedText.trim());
           console.log('[AI Chat] Final HTML after processing:', finalHtml);
 
           // Update the message with final processed content
@@ -460,26 +462,8 @@ const AiChat = () => {
         const sources = extractSources(data.response);
         let cleanedText = data.response.replace(/\[source: .+?\]/g, '');
         
-        // Targeted fixes for common streaming reconstruction issues
-        cleanedText = cleanedText
-          // Fix missing newlines before headers
-          .replace(/([^\n])(#{1,6}\s)/g, '$1\n\n$2')  // Add double newline before headers
-          // Fix missing newlines before list items after colons
-          .replace(/(:\s*)(- \*\*)/g, '$1\n$2')  // Add newline after colon before list items
-          // Fix missing newlines before regular list items
-          .replace(/([^:\n])(- \*\*)/g, '$1\n$2')  // Add newline before list items
-          // Fix missing spaces after sentences
-          .replace(/([.!?])([A-Z])/g, '$1 $2')  // Add space after sentence endings
-          // Fix leftover punctuation from source removal
-          .replace(/\s+\.$/, '.')  // Remove extra spaces before final period
-          .replace(/sourced from\s*\.$/, 'sourced from the knowledge base.')  // Fix "sourced from ."
-          // Conservative whitespace normalization
-          .replace(/[ ]{2,}/g, ' ')  // Multiple spaces to single space
-          .replace(/\n{4,}/g, '\n\n\n')  // More than 3 newlines to 3 max
-          .trim();
-        
-        // Apply ONLY markdown-it processing - CSS handles all styling
-        const finalHtml = renderMarkdown(cleanedText);
+        // Apply ONLY markdown-it processing - no regex manipulation
+        const finalHtml = renderMarkdown(cleanedText.trim());
         
         setMessages(prevMessages =>
           prevMessages.map(msg =>
