@@ -145,43 +145,147 @@ const AiChat = () => {
         headers['Authorization'] = `Bearer ${jwtToken}`;
       }
       
-      const userResponse = await fetch('/admin/users/me', {
+      // Get admin user data - this is the correct approach for admin panel users
+      const adminUserResponse = await fetch('/admin/users/me', {
         method: 'GET',
         headers,
         credentials: 'include',
       });
 
-      if (!userResponse.ok) {
-        throw new Error(`Failed to fetch user: ${userResponse.status} ${userResponse.statusText}`);
+      if (!adminUserResponse.ok) {
+        throw new Error(`Failed to fetch admin user: ${adminUserResponse.status} ${adminUserResponse.statusText}`);
       }
 
-      const userData = await userResponse.json();
+      const adminUserData = await adminUserResponse.json();
       
-      // For now, use mock bot/company data while we figure out the real source
-      const userDataWithDefaults = {
-        id: userData.id,
-        email: userData.email,
-        firstname: userData.firstname, 
-        lastname: userData.lastname,
-        // Mock data temporarily
-        bot: { id: 1, name: 'Knowledge Bot' },
-        company: { id: 1, name: 'Test Company' }
+      // Since admin users can see bot and company assignments in Content Manager,
+      // we need to get this data from the admin API or use a workaround.
+      // For now, let's check if there's a way to get user data with populated relations via admin API
+      
+      // Try to get the user's bot and company data from the users-permissions collection via admin API
+      let botData = null;
+      let companyData = null;
+      
+      // Get the email - admin users have nested data structure
+      const userEmail = adminUserData.data?.email || adminUserData.data?.username || adminUserData.email || adminUserData.username;
+      
+      if (!userEmail) {
+        throw new Error('Could not determine user email from admin user data. Admin user data: ' + JSON.stringify(adminUserData.data || adminUserData));
+      }
+      
+      try {
+        // Try to find the corresponding users-permissions user by email
+        // Add publicationState=preview to get DRAFT versions (matching admin interface)
+        const usersPermissionsResponse = await fetch(`/content-manager/collection-types/plugin::users-permissions.user?filters[$and][0][email][$eq]=${encodeURIComponent(userEmail)}&populate[bot]=*&populate[company]=*&publicationState=preview`, {
+          method: 'GET',
+          headers,
+          credentials: 'include',
+        });
+        
+                if (usersPermissionsResponse.ok) {
+          const usersData = await usersPermissionsResponse.json();
+          
+          if (usersData.results && usersData.results.length > 0) {
+            const userRecord = usersData.results[0];
+            botData = userRecord.bot;
+            companyData = userRecord.company;
+          } else {
+            console.error('No users-permissions user found with email:', userEmail);
+          }
+        } else {
+          console.error('Users-permissions query failed:', usersPermissionsResponse.status);
+        }
+      } catch (err) {
+        console.error('Error calling users-permissions API:', err.message);
+      }
+      
+      // Validate that we have the required bot and company data
+      if (!botData) {
+        throw new Error('No bot assigned to your user account. Please contact your administrator to assign a bot in the Users collection.');
+      }
+      
+      if (!companyData) {
+        throw new Error('No company assigned to your user account. Please contact your administrator to assign a company in the Users collection.');
+      }
+      
+      // Create user data object with real bot and company relations
+      const userDataWithBotAndCompany = {
+        id: adminUserData.data?.id || adminUserData.id,
+        email: userEmail,
+        firstname: adminUserData.data?.firstname || adminUserData.firstname, 
+        lastname: adminUserData.data?.lastname || adminUserData.lastname,
+        // Real bot and company data from Content Manager API
+        bot: botData,
+        company: companyData
       };
       
-      console.log('🔵 AI Chat - User data set with:', {
-        company_id: userDataWithDefaults.company.id,
-        company_name: userDataWithDefaults.company.name,
-        bot_id: userDataWithDefaults.bot.id,
-        bot_name: userDataWithDefaults.bot.name,
-        user_id: userDataWithDefaults.id,
-        user_email: userDataWithDefaults.email
-      });
+      setUser(userDataWithBotAndCompany);
       
-      setUser(userDataWithDefaults);
-      
+      // Generate JWT token with REAL company and bot IDs (not hardcoded)
+      if (userDataWithBotAndCompany.company?.id && userDataWithBotAndCompany.bot?.id) {
+                        // EFFICIENT SOLUTION: Query for specific draft versions by documentId
+        let draftBotId = null;
+        let draftCompanyId = null;
+        
+        try {
+          // Query for specific draft bot by documentId (much more efficient)
+          const draftBotResponse = await fetch(`/content-manager/collection-types/api::bot.bot?filters[documentId][$eq]=${userDataWithBotAndCompany.bot.documentId}&publicationState=preview`, {
+            method: 'GET',
+            headers,
+            credentials: 'include',
+          });
+          
+          // Query for specific draft company by documentId (much more efficient)  
+          const draftCompanyResponse = await fetch(`/content-manager/collection-types/api::company.company?filters[documentId][$eq]=${userDataWithBotAndCompany.company.documentId}&publicationState=preview`, {
+            method: 'GET',
+            headers,
+            credentials: 'include',
+          });
+          
+          if (draftBotResponse.ok) {
+            const draftBotData = await draftBotResponse.json();
+                         if (draftBotData.results && draftBotData.results.length > 0) {
+               draftBotId = draftBotData.results[0].id;
+             }
+          }
+          
+          if (draftCompanyResponse.ok) {
+            const draftCompanyData = await draftCompanyResponse.json();
+                         if (draftCompanyData.results && draftCompanyData.results.length > 0) {
+               draftCompanyId = draftCompanyData.results[0].id;
+             }
+          }
+        } catch (err) {
+          console.error('Error fetching draft versions:', err);
+        }
+         
+         const payload = {
+           company_id: draftCompanyId || userDataWithBotAndCompany.company.id, // Use draft ID or fallback
+           bot_id: draftBotId || userDataWithBotAndCompany.bot.id, // Use draft ID or fallback
+         };
+         
+         console.log('🚀 JWT Token Generated - Company ID:', payload.company_id, 'Bot ID:', payload.bot_id);
+        
+        const token = await createJWT(payload, 'my-ultra-secure-signing-key');
+        
+        setJwtToken(token);
+ 
+        // Add welcome message
+        setMessages([
+          {
+            id: 1,
+            role: 'assistant',
+            content: 'Hello! I\'m your AI assistant, ready to help you explore and understand your knowledge base. What would you like to discover today?',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]);
+ 
+        // Clear any previous errors
+        setError('');
+      }
+
     } catch (error) {
-      // Keep essential error logging without exposing sensitive details
-      setError(`Auth failed: ${error.message}. Please ensure you're logged into Strapi admin.`);
+      setError(`Auth failed: ${error.message}. Please ensure you're logged into Strapi admin and have bot/company assigned.`);
     } finally {
       setUserLoading(false);
     }
@@ -218,68 +322,14 @@ const AiChat = () => {
     // Initialize chat and generate JWT token
     const initializeChat = async () => {
       try {
-        
         // First fetch user data
-
         await fetchUserData();
-
       } catch (err) {
-
         setError(`Initialization failed: ${err.message}`);
       }
     };
     initializeChat();
   }, [fetchUserData]);
-
-  // Generate JWT token when user data is available
-  useEffect(() => {
-    const generateJWTAndWelcome = async () => {
-      if (!user || !user.bot || !user.company) return;
-      
-      try {
-        // Generate JWT token with real user data
-        const payload = {
-          company_id: user.company.id,
-          bot_id: user.bot.id
-          // Note: Only company_id and bot_id needed - user_id removed per spec
-        };
-        
-        console.log('🔵 AI Chat - Generating JWT token with payload:', {
-          company_id: payload.company_id,
-          bot_id: payload.bot_id,
-          user_context: {
-            user_id: user.id,
-            user_email: user.email,
-            company_name: user.company.name,
-            bot_name: user.bot.name
-          }
-        });
-        
-        const token = await createJWT(payload, 'my-ultra-secure-signing-key');
-        
-        console.log('✅ AI Chat - JWT token generated successfully for company_id:', payload.company_id, 'bot_id:', payload.bot_id);
-        setJwtToken(token);
-
-        // Add welcome message
-        setMessages([
-          {
-            id: 1,
-            role: 'assistant',
-            content: 'Hello! I\'m your AI assistant, ready to help you explore and understand your knowledge base. What would you like to discover today?',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }
-        ]);
-
-        // Clear any previous errors
-        setError('');
-      } catch (err) {
-
-        setError(`JWT generation failed: ${err.message}`);
-      }
-    };
-
-    generateJWTAndWelcome();
-  }, [user]); // Run when user data changes
 
   const handleSend = useCallback(async () => {
             if (!input.trim() || isLoading || !jwtToken || !user) return;

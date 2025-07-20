@@ -16,5 +16,9 @@ module.exports = {
    * This gives you an opportunity to set up your data model,
    * run jobs, or perform some special logic.
    */
-  bootstrap(/*{ strapi }*/) {},
+  async bootstrap({ strapi }) {
+    // All role management code completely removed to prevent interference
+    // Manual role configuration in admin panel is now the only way to manage roles
+    console.log('🚀 Bootstrap function: No role management code - manual configuration only');
+  },
 };

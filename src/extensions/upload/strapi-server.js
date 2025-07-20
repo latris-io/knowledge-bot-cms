@@ -3,37 +3,81 @@
 console.log('[INFO] Loading custom upload extension for Strapi v5.12.6');
 
 module.exports = (plugin) => {
+  // Apply policies to upload routes for file access control - CONTENT-API ONLY
+  if (plugin.routes && plugin.routes['content-api']) {
+    plugin.routes['content-api'].routes.forEach(route => {
+      if (route.handler === 'upload.find' || 
+          route.handler === 'upload.findOne' ||
+          route.handler === 'upload.destroy') {
+        route.config.policies = route.config.policies || [];
+        route.config.policies.push('global::isOwner');
+      }
+    });
+  }
+
+  // DO NOT apply policies to admin routes - this interferes with admin panel permissions
+  // The controller-level filtering handles standard user file access instead
+
   const defaultUploadService = plugin.services.upload;
 
   // File extension validation is handled in the middleware
 
-  // Add notification message to upload response
+  // Add notification message to upload response AND customize find controller
   if (plugin.controllers && plugin.controllers.upload) {
-    const originalUploadController = plugin.controllers.upload.upload;
-    plugin.controllers.upload.upload = async (ctx) => {
-      // Call the original upload controller
-      const result = await originalUploadController(ctx);
-      
-      // Add notification message to response
-      if (ctx.response.status === 201 && ctx.response.body) {
-        const files = Array.isArray(ctx.response.body) ? ctx.response.body : [ctx.response.body];
-        const fileCount = files.length;
-        const fileWord = fileCount === 1 ? 'file' : 'files';
+    // Customize the find controller to filter files by user for standard users
+    const originalFind = plugin.controllers.upload.find;
+    if (originalFind) {
+      plugin.controllers.upload.find = async (ctx) => {
+        const { user } = ctx.state;
         
-        // Add notification message
-        ctx.response.body = {
-          data: ctx.response.body,
-          message: `✅ ${fileCount} ${fileWord} uploaded successfully! You will receive an email notification once your ${fileWord} ${fileCount === 1 ? 'has' : 'have'} been processed and ${fileCount === 1 ? 'is' : 'are'} ready for use by your AI bot.`,
-          notification: {
-            type: 'success',
-            title: 'Upload Complete',
-            message: `Your ${fileWord} will be processed shortly and you'll be notified via email when ready.`
+        // Check if user is standard user
+        if (user && user.roles) {
+          const isStandardUser = user.roles.some(role => role.code === 'standard-user');
+          const isAdmin = user.roles.some(role => 
+            role.code === 'strapi-super-admin' || role.code === 'strapi-editor'
+          );
+          
+          if (isStandardUser && !isAdmin) {
+            // Add filter to only show files created by this user
+            ctx.query.filters = {
+              ...ctx.query.filters,
+              createdBy: user.id
+            };
           }
-        };
-      }
-      
-      return result;
-    };
+        }
+        
+        return await originalFind(ctx);
+      };
+    }
+
+    // Existing upload controller modification
+    const originalUploadController = plugin.controllers.upload.upload;
+    if (originalUploadController) {
+      plugin.controllers.upload.upload = async (ctx) => {
+        // Call the original upload controller
+        const result = await originalUploadController(ctx);
+        
+        // Add notification message to response
+        if (ctx.response.status === 201 && ctx.response.body) {
+          const files = Array.isArray(ctx.response.body) ? ctx.response.body : [ctx.response.body];
+          const fileCount = files.length;
+          const fileWord = fileCount === 1 ? 'file' : 'files';
+          
+          // Add notification message
+          ctx.response.body = {
+            data: ctx.response.body,
+            message: `✅ ${fileCount} ${fileWord} uploaded successfully! You will receive an email notification once your ${fileWord} ${fileCount === 1 ? 'has' : 'have'} been processed and ${fileCount === 1 ? 'is' : 'are'} ready for use by your AI bot.`,
+            notification: {
+              type: 'success',
+              title: 'Upload Complete',
+              message: `Your ${fileWord} will be processed shortly and you'll be notified via email when ready.`
+            }
+          };
+        }
+        
+        return result;
+      };
+    }
   }
 
   plugin.services.upload = ({ strapi }) => {

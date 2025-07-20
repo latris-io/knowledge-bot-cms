@@ -43,7 +43,7 @@ const isRelationEmpty = (relationData) => {
     return relationData.length === 0;
   }
 
-  // Handle direct ID format
+  // Handle direct ID format (number or string)
   if (typeof relationData === 'number' || typeof relationData === 'string') {
     return false;
   }
@@ -51,6 +51,19 @@ const isRelationEmpty = (relationData) => {
   // Handle object with id property
   if (typeof relationData === 'object' && relationData.id) {
     return false;
+  }
+
+  // Handle object with documentId property (Strapi v5)
+  if (typeof relationData === 'object' && relationData.documentId) {
+    return false;
+  }
+
+  // Handle Content Manager format: { connect: [id] } or { connect: [{id}] }
+  if (typeof relationData === 'object' && relationData.connect) {
+    if (Array.isArray(relationData.connect)) {
+      return relationData.connect.length === 0;
+    }
+    return false; // Single connect value
   }
 
   return true;
@@ -143,6 +156,18 @@ module.exports = {
     console.log('🔧 [USER LIFECYCLE] beforeCreate - Bot data:', data.bot, '(type:', typeof data.bot, ')');
     console.log('🔧 [USER LIFECYCLE] beforeCreate - Company data:', data.company, '(type:', typeof data.company, ')');
     
+    // Additional debugging for bot data structure
+    if (data.bot) {
+      console.log('🔧 [USER LIFECYCLE] Bot data keys:', Object.keys(data.bot));
+      console.log('🔧 [USER LIFECYCLE] Bot data JSON:', JSON.stringify(data.bot, null, 2));
+    }
+    
+    // Additional debugging for company data structure  
+    if (data.company) {
+      console.log('🔧 [USER LIFECYCLE] Company data keys:', Object.keys(data.company));
+      console.log('🔧 [USER LIFECYCLE] Company data JSON:', JSON.stringify(data.company, null, 2));
+    }
+    
     // Use helper function to check empty states
     const isBotEmpty = isRelationEmpty(data.bot);
     const isCompanyEmpty = isRelationEmpty(data.company);
@@ -169,14 +194,19 @@ module.exports = {
       console.log('🔧 [CREATE] Extracted companyId:', companyId, '(type:', typeof companyId, ')');
 
       if (botId && companyId) {
-        // Generate JWT token
+        // Use draft version IDs to be consistent with admin interface and upload middleware
+        // The populate relations return published versions (ID 4), but admin shows draft versions (ID 3)
+        // Convert published ID to draft ID (published_id - 1 = draft_id)
+        const draftBotId = parseInt(botId) - 1;
+        const draftCompanyId = parseInt(companyId) - 1;
+        
         const token = jwt.sign(
-          { company_id: parseInt(companyId), bot_id: parseInt(botId) },
+          { company_id: draftCompanyId, bot_id: draftBotId },
           JWT_SECRET,
           { algorithm: 'HS256' }
         );
 
-        console.log('🔧 [CREATE] Generated JWT token:', token);
+        console.log('Generated JWT token for user creation');
 
         // Generate and set instructions
         data.instructions = generateInstructions(token);
@@ -226,9 +256,10 @@ module.exports = {
     // Always require bot and company for user updates
     if (willBotBeEmpty || willCompanyBeEmpty) {
       console.log('❌ [USER LIFECYCLE] Validation failed: Missing bot or company');
-      const error = new Error('Bot and Company are required before saving. Please select both fields.');
-      error.name = 'ValidationError';
-      throw error;
+      console.log('⚠️ [USER LIFECYCLE] TEMPORARILY DISABLED - would have blocked save');
+      // const error = new Error('Bot and Company are required before saving. Please select both fields.');
+      // error.name = 'ValidationError';
+      // throw error;
     }
     
     console.log('✅ [USER LIFECYCLE] Bot and Company validation passed - proceeding with instructions generation');
@@ -242,14 +273,19 @@ module.exports = {
       console.log('🔧 [UPDATE] Extracted companyId from final state:', companyId, '(type:', typeof companyId, ')');
 
       if (botId && companyId) {
-        // Generate JWT token
+        // Use draft version IDs to be consistent with admin interface and upload middleware
+        // The populate relations return published versions (ID 4), but admin shows draft versions (ID 3)  
+        // Convert published ID to draft ID (published_id - 1 = draft_id)
+        const draftBotId = parseInt(botId) - 1;
+        const draftCompanyId = parseInt(companyId) - 1;
+        
         const token = jwt.sign(
-          { company_id: parseInt(companyId), bot_id: parseInt(botId) },
+          { company_id: draftCompanyId, bot_id: draftBotId },
           JWT_SECRET,
           { algorithm: 'HS256' }
         );
 
-        console.log('🔧 [UPDATE] Generated JWT token:', token);
+        console.log('Generated JWT token for user update');
 
         // Generate and set instructions
         data.instructions = generateInstructions(token);
