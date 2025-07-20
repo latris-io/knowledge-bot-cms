@@ -40,7 +40,11 @@ function extractSources(text) {
 
 function cleanText(text) {
   // BR-024 & BR-031: Sources are extracted from [source: ...] patterns and trailing periods
-  return text.replace(/\[source: .+?\]\.?/g, "").trim();
+  return text
+    .replace(/\s*\[source: .+?\]\s*/g, " ")  // Remove source refs and normalize surrounding spaces
+    .replace(/\s+\./g, ".")                   // Fix spaces before periods
+    .replace(/\s+/g, ' ')                     // Normalize all whitespace
+    .trim();                                  // Clean up edges
 }
 
 function needsIntelligentSpacing(accumulatedText, nextChunk) {

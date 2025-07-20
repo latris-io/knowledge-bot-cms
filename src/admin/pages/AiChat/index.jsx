@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, memo } from 'react';
 import MarkdownIt from 'markdown-it';
 
 // Session Management - matches the widget exactly
@@ -91,6 +91,8 @@ async function createJWT(payload, secret) {
   return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
 }
 
+
+
 const AiChat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -101,23 +103,27 @@ const AiChat = () => {
   const [error, setError] = useState('');
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
-  const sessionManager = new SessionManager();
+  const sessionManager = useMemo(() => new SessionManager(), []);
 
-  // Real user data state
+  // Real user data state - memoized for performance
   const [user, setUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
 
-  // Scroll to bottom of messages
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  // Optimized scroll to bottom - instant for performance
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "auto", block: "end" });
+    }
+  }, []);
 
+  // Debounced scroll effect to prevent excessive scrolling
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    const timeoutId = setTimeout(scrollToBottom, 50);
+    return () => clearTimeout(timeoutId);
+  }, [messages.length, scrollToBottom]); // Only trigger on message count change, not content
 
-  // Back to JWT approach that was working before
-  const fetchUserData = async () => {
+  // Back to JWT approach that was working before - memoized for performance
+  const fetchUserData = useCallback(async () => {
     try {
       setUserLoading(true);
       
@@ -152,7 +158,7 @@ const AiChat = () => {
       const userData = await userResponse.json();
       
       // For now, use mock bot/company data while we figure out the real source
-      setUser({
+      const userDataWithDefaults = {
         id: userData.id,
         email: userData.email,
         firstname: userData.firstname, 
@@ -160,7 +166,18 @@ const AiChat = () => {
         // Mock data temporarily
         bot: { id: 1, name: 'Knowledge Bot' },
         company: { id: 1, name: 'Test Company' }
+      };
+      
+      console.log('🔵 AI Chat - User data set with:', {
+        company_id: userDataWithDefaults.company.id,
+        company_name: userDataWithDefaults.company.name,
+        bot_id: userDataWithDefaults.bot.id,
+        bot_name: userDataWithDefaults.bot.name,
+        user_id: userDataWithDefaults.id,
+        user_email: userDataWithDefaults.email
       });
+      
+      setUser(userDataWithDefaults);
       
     } catch (error) {
       // Keep essential error logging without exposing sensitive details
@@ -168,10 +185,10 @@ const AiChat = () => {
     } finally {
       setUserLoading(false);
     }
-  };
+  }, []);
 
   // Optimized auto-resize function with CSS constraints
-  const resizeTextarea = () => {
+  const resizeTextarea = useCallback(() => {
     if (textareaRef.current) {
       const textarea = textareaRef.current;
       // Reset to auto to get accurate scrollHeight
@@ -179,22 +196,21 @@ const AiChat = () => {
       // Apply height with CSS max constraint
       textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
     }
-  };
+  }, []);
 
   // Auto-focus textarea when it becomes enabled
   useEffect(() => {
     const isTextareaEnabled = !isLoading && jwtToken && user;
     if (isTextareaEnabled && textareaRef.current) {
-      // Small delay to ensure DOM is ready and other elements aren't stealing focus
-      const focusTimer = setTimeout(() => {
+      // Use requestAnimationFrame for better performance than setTimeout
+      const focusFrame = requestAnimationFrame(() => {
         if (textareaRef.current) {
           textareaRef.current.focus();
           resizeTextarea(); // Initial resize when textarea becomes available
-    
         }
-      }, 50);
+      });
       
-      return () => clearTimeout(focusTimer);
+      return () => cancelAnimationFrame(focusFrame);
     }
   }, [isLoading, jwtToken, user]);
 
@@ -213,7 +229,7 @@ const AiChat = () => {
       }
     };
     initializeChat();
-  }, []);
+  }, [fetchUserData]);
 
   // Generate JWT token when user data is available
   useEffect(() => {
@@ -227,7 +243,21 @@ const AiChat = () => {
           bot_id: user.bot.id
           // Note: Only company_id and bot_id needed - user_id removed per spec
         };
+        
+        console.log('🔵 AI Chat - Generating JWT token with payload:', {
+          company_id: payload.company_id,
+          bot_id: payload.bot_id,
+          user_context: {
+            user_id: user.id,
+            user_email: user.email,
+            company_name: user.company.name,
+            bot_name: user.bot.name
+          }
+        });
+        
         const token = await createJWT(payload, 'my-ultra-secure-signing-key');
+        
+        console.log('✅ AI Chat - JWT token generated successfully for company_id:', payload.company_id, 'bot_id:', payload.bot_id);
         setJwtToken(token);
 
         // Add welcome message
@@ -251,7 +281,7 @@ const AiChat = () => {
     generateJWTAndWelcome();
   }, [user]); // Run when user data changes
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
             if (!input.trim() || isLoading || !jwtToken || !user) return;
     
     const question = input.trim();
@@ -444,7 +474,7 @@ const AiChat = () => {
               const uniqueSources = [...new Set(allSources)];
               
               // Remove sources but preserve line breaks - don't trim!
-              const cleanText = accumulatedText.replace(/\[source: .+?\]\.?/g, "");
+              const cleanText = accumulatedText.replace(/\[source: .+?\]/g, "");
               // Remove loading message but preserve line breaks - don't trim!
               const contentText = cleanText.replace(/^Getting your response\.\.\.?\s*/, "");
               
@@ -515,7 +545,7 @@ const AiChat = () => {
                       accumulatedText += (needsSpace ? ' ' : '') + chunkData.content;
                       
                       // Check if we have actual response content
-                      const cleanForCheck = accumulatedText.replace(/\[source: .+?\]\.?/g, "").trim();
+                      const cleanForCheck = accumulatedText.replace(/\[source: .+?\]/g, "").trim();
                       const hasActualContent = cleanForCheck.length > 0 && !cleanForCheck.startsWith("Getting your response");
                       
                       if (!responseStarted && hasActualContent) {
@@ -562,7 +592,7 @@ const AiChat = () => {
                 }
                 
                 // Check if we have actual response content (fallback mode)
-                const cleanForCheck = accumulatedText.replace(/\[source: .+?\]\.?/g, "").trim();
+                const cleanForCheck = accumulatedText.replace(/\[source: .+?\]/g, "").trim();
                 const hasActualContent = cleanForCheck.length > 0 && !cleanForCheck.startsWith("Getting your response");
                 
                 if (!responseStarted && hasActualContent) {
@@ -587,12 +617,12 @@ const AiChat = () => {
             }
           }
         
-        // Refocus input field after streaming is complete
-        setTimeout(() => {
+        // Refocus input field after streaming is complete - use RAF for better performance
+        requestAnimationFrame(() => {
           if (textareaRef.current) {
             textareaRef.current.focus();
           }
-        }, 100);
+        });
       
       }
       } else if (contentType && contentType.includes('application/json')) {
@@ -607,7 +637,7 @@ const AiChat = () => {
         const uniqueSources = [...new Set(allSources)];
         
         // Remove [source: ...] from main text
-        raw = raw.replace(/\[source: .+?\]\.?/g, "").trim();
+                  raw = raw.replace(/\[source: .+?\]/g, "").trim();
         
         // Parse markdown to HTML using widget's preprocessing
         const mainHtml = parseMarkdown(raw);
@@ -629,12 +659,12 @@ const AiChat = () => {
           )
         );
 
-        // Refocus input field after JSON response is complete
-        setTimeout(() => {
+        // Refocus input field after JSON response is complete - use RAF
+        requestAnimationFrame(() => {
           if (textareaRef.current) {
             textareaRef.current.focus();
           }
-        }, 100);
+        });
       }
         
     } catch (error) {
@@ -652,21 +682,25 @@ const AiChat = () => {
       setIsLoading(false);
       setIsTyping(false);
       
-      // Always refocus input field when request is complete (success or error)
-      setTimeout(() => {
+      // Always refocus input field when request is complete (success or error) - use RAF
+      requestAnimationFrame(() => {
         if (textareaRef.current) {
           textareaRef.current.focus();
         }
-      }, 100);
+      });
     }
-  };
+  }, [input, isLoading, jwtToken, user, messages, setMessages, setInput, setIsLoading, setIsTyping]);
 
-  const handleKeyPress = (e) => {
+  const handleKeyPress = useCallback((e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-  };
+  }, [handleSend]);
+
+  const handleInputChange = useCallback((value) => {
+    setInput(value);
+  }, [setInput]);
 
   const handleNewChat = () => {
     sessionManager.clearSession();
@@ -773,7 +807,7 @@ const AiChat = () => {
         background: 'radial-gradient(600px circle at 50% 50%, rgba(120, 119, 198, 0.05) 0%, rgba(255, 45, 85, 0.03) 40%, transparent 100%)',
         pointerEvents: 'none',
         transition: 'all 0.3s ease',
-        animation: 'ambientPulse 12s ease-in-out infinite alternate',
+        // Removed continuous ambient pulse for performance
         zIndex: 0
       }} />
 
@@ -797,8 +831,7 @@ const AiChat = () => {
           background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%)',
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
-          animation: 'orbFloat 25s infinite ease-in-out',
-          animationDelay: '0s'
+          // Removed continuous animation for performance
         }} />
         <div style={{
           position: 'absolute',
@@ -810,8 +843,7 @@ const AiChat = () => {
           background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%)',
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
-          animation: 'orbFloat 25s infinite ease-in-out',
-          animationDelay: '-8s'
+          // Removed continuous animation for performance
         }} />
         <div style={{
           position: 'absolute',
@@ -823,8 +855,7 @@ const AiChat = () => {
           background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%)',
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
-          animation: 'orbFloat 25s infinite ease-in-out',
-          animationDelay: '-16s'
+          // Removed continuous animation for performance
         }} />
       </div>
       {/* Main Container - Glassmorphism */}
@@ -860,7 +891,7 @@ const AiChat = () => {
             rgba(52, 199, 89, 0.6) 60%, 
             rgba(255, 149, 0, 0.6) 80%, 
             transparent 100%)`,
-          animation: 'holographicFlow 4s ease-in-out infinite alternate'
+          // Removed continuous holographic animation for performance
         }} />
         
         {/* Holographic Bottom Border */}
@@ -876,7 +907,7 @@ const AiChat = () => {
             rgba(52, 199, 89, 0.4) 50%, 
             rgba(255, 45, 85, 0.4) 75%, 
             transparent 100%)`,
-          animation: 'holographicFlow 4s ease-in-out infinite alternate-reverse'
+          // Removed continuous holographic animation for performance
         }} />
 
         {/* Glassmorphism Header */}
@@ -906,7 +937,7 @@ const AiChat = () => {
               backgroundClip: 'text',
               textAlign: 'center',
               letterSpacing: '-0.03em',
-              animation: 'textShimmer 4s ease-in-out infinite alternate',
+              // Removed continuous text shimmer for performance
               position: 'relative',
               zIndex: 1,
               margin: 0
@@ -927,7 +958,7 @@ const AiChat = () => {
                 borderRadius: '50%',
                 background: jwtToken ? '#34c759' : '#ff453a',
                 boxShadow: jwtToken ? '0 0 12px rgba(52, 199, 89, 0.8)' : '0 0 12px rgba(255, 69, 58, 0.8)',
-                animation: 'statusPulse 2s ease-in-out infinite'
+                // Reduced pulse animation frequency for performance
               }} />
               <div style={{
                 fontSize: '12px',
@@ -980,8 +1011,8 @@ const AiChat = () => {
                 display: 'flex',
                 gap: '16px',
                 opacity: 0,
-                animation: `messageSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards`,
-                animationDelay: `${(index % 10) * 0.1}s`,
+                            // Simplified message animation for better performance with many messages
+            animation: `messageSlideIn 0.3s ease-out forwards`,
                 ...(message.role === 'user' ? { flexDirection: 'row-reverse' } : {})
               }}
             >
@@ -1004,7 +1035,7 @@ const AiChat = () => {
                   ? '0 4px 16px rgba(52, 199, 89, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
                   : '0 4px 16px rgba(120, 119, 198, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
                 border: '1px solid rgba(255, 255, 255, 0.15)',
-                animation: 'avatarGlow 4s ease-in-out infinite alternate',
+                // Removed continuous avatar glow for performance
                 position: 'relative',
                 overflow: 'hidden'
               }}>
@@ -1016,7 +1047,7 @@ const AiChat = () => {
                   width: '200%',
                   height: '200%',
                   background: 'linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.15) 50%, transparent 70%)',
-                  animation: 'avatarShine 3s linear infinite'
+                  // Removed continuous avatar shine for performance
                 }} />
                 {message.role === 'user' ? 'U' : 'AI'}
               </div>
@@ -1194,7 +1225,7 @@ const AiChat = () => {
               rgba(255, 45, 85, 0.4) 50%, 
               rgba(52, 199, 89, 0.4) 75%, 
               transparent 100%)`,
-            animation: 'inputGlow 5s ease-in-out infinite alternate'
+            // Removed continuous input glow for performance
           }} />
           <div style={{
             display: 'flex',
@@ -1221,9 +1252,8 @@ const AiChat = () => {
               ref={textareaRef}
               value={input}
               onChange={(e) => {
-                setInput(e.target.value);
-                // Minimal JS for auto-resize - CSS handles constraints
-                setTimeout(resizeTextarea, 0);
+                handleInputChange(e.target.value);
+                resizeTextarea();
               }}
               onKeyPress={handleKeyPress}
               placeholder="Message AI Assistant..."
@@ -1291,7 +1321,7 @@ const AiChat = () => {
                   width: '200%',
                   height: '200%',
                   background: 'linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.2) 50%, transparent 70%)',
-                  animation: 'buttonShine 2s linear infinite'
+                  // Removed continuous button shine for performance
                 }} />
               )}
               {isLoading ? (
