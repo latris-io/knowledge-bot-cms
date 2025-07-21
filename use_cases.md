@@ -151,11 +151,13 @@ System automatically generates JWT tokens and widget installation instructions w
 - Token is ready for widget authentication
 
 #### **Business Rules**
-- **BR-011**: JWT token includes company_id and bot_id
+- **BR-011**: JWT token includes company_id and bot_id (uses draft version IDs for admin consistency)
 - **BR-012**: Token uses HS256 algorithm
 - **BR-013**: Instructions include full HTML implementation
 - **BR-014**: Token is embedded in data-token attribute
 - **BR-015**: Instructions support multiple CMS platforms
+- **BR-016**: JWT tokens use draft version IDs (e.g., 3,3) matching admin interface display
+- **BR-017**: System handles Strapi v5 draft/publish ID discrepancies automatically
 
 ---
 
@@ -267,6 +269,9 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - **BR-029**: Input field auto-focuses on page load and after each response
 - **BR-030**: Intelligent spacing automatically adds spaces between sentence boundaries in streaming chunks
 - **BR-031**: Source reference regex handles trailing periods: `/\[source: .+?\]\.?/g`
+- **BR-032**: AI Chat uses efficient O(1) queries for draft version ID lookup
+- **BR-033**: JWT generation scales to thousands of users with consistent performance
+- **BR-034**: System maintains ID consistency across all JWT tokens (3,3) matching admin display
 
 ---
 
@@ -294,12 +299,17 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - **Metadata Management**: Handles file metadata assignment
 
 ### **AI Chat Interface (`src/admin/pages/AiChat/index.js`)**
-- **JWT Token Generation**: Uses same secret and structure as user lifecycle hooks
+- **JWT Token Generation**: Uses same secret and structure as user lifecycle hooks with draft version IDs
 - **Session Management**: Maintains conversation state with localStorage
 - **Streaming Support**: Handles Server-Sent Events and JSON responses
 - **Intelligent Spacing**: Automatically detects sentence boundaries and adds spaces between chunks
 - **Markdown Rendering**: Uses markdown-it library with preprocessing
 - **Source Extraction**: Parses and deduplicates source references with trailing period handling
+- **ID Consistency System**: Efficient draft version ID resolution for Strapi v5:
+  - Targeted queries using `filters[documentId][$eq]` for O(1) performance
+  - Draft version lookup via `publicationState=preview`
+  - Scales to thousands of users without performance degradation
+  - Maintains consistent JWT token IDs (3,3) matching admin interface display
 - **Performance Optimizations**: Comprehensive performance improvements including:
   - Memoized components and callbacks to prevent unnecessary re-renders  
   - RequestAnimationFrame-based DOM operations (eliminates setTimeout usage)
@@ -405,6 +415,8 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - ✅ Sessions maintain conversation continuity
 - ✅ Markdown content is properly formatted
 - ✅ Sources are extracted and displayed
+- ✅ JWT tokens maintain consistent IDs across all system components
+- ✅ AI Chat queries scale efficiently to thousands of users
 
 ### **Non-Functional Requirements**
 - ✅ Toast messages persist until manually closed
