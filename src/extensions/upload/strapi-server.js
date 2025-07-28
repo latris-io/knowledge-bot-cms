@@ -151,12 +151,15 @@ module.exports = (plugin) => {
           // Create file event if bot is assigned
           if (updateData.bot) {
             try {
+              // Convert file size from KB to bytes and ensure it's an integer
+              const fileSizeInBytes = Math.round((result.size || 0) * 1024);
+              
               await strapi.entityService.create('api::file-event.file-event', {
                 data: {
                   file_document_id: result.documentId || result.id.toString(),
                   file_name: result.name,
                   file_type: result.mime,
-                  file_size: result.size,
+                  file_size: fileSizeInBytes,
                   event_type: 'created',
                   processing_status: 'pending',
                   user_id: updateData.user,
@@ -164,7 +167,7 @@ module.exports = (plugin) => {
                   company_id: updateData.company
                 }
               });
-              console.log('�� File event created for tracking');
+              console.log('📊 File event created for tracking');
             } catch (error) {
               console.error('❌ Error creating file event:', error);
               if (error.details && error.details.errors) {
