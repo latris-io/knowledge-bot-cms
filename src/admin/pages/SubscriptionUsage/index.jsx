@@ -4,11 +4,32 @@ import {
   Typography,
   Flex,
   Button,
-  Icon,
   Loader
 } from '@strapi/design-system';
-import { ExclamationMarkCircle, ArrowRight, Refresh } from '@strapi/icons';
-import { auth, useFetchClient } from '@strapi/strapi/admin';
+import { useFetchClient } from '@strapi/strapi/admin';
+
+// Custom icon components
+const ExclamationMarkCircle = ({ color = 'currentColor', ...props }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2"/>
+    <path d="M12 8V12" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    <circle cx="12" cy="16" r="1" fill={color}/>
+  </svg>
+);
+
+const ArrowRight = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const Refresh = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M14 8C14 11.3137 11.3137 14 8 14C5.5 14 3.5 12.5 2.5 10.5M2 8C2 4.68629 4.68629 2 8 2C10.5 2 12.5 3.5 13.5 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M14 5V9H10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M2 11V7H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
 const ProgressBar = ({ value, color = 'primary600', height = 4 }) => (
   <Box
@@ -139,7 +160,7 @@ const SubscriptionUsageWidget = () => {
       <Box background="neutral0" padding={6} shadow="filterShadow" hasRadius>
         <Flex direction="column" gap={3}>
           <Flex alignItems="center" gap={2}>
-            <Icon as={ExclamationMarkCircle} color="danger600" />
+            <ExclamationMarkCircle color="danger600" />
             <Typography variant="sigma" textColor="danger600">
               Subscription Usage
             </Typography>
@@ -267,7 +288,7 @@ const SubscriptionUsageWidget = () => {
           hasRadius
         >
           <Flex alignItems="center" gap={2}>
-            <Icon as={ExclamationMarkCircle} color="warning600" />
+            <ExclamationMarkCircle color="warning600" />
             <Typography variant="pi" textColor="warning600">
               {storagePercentage > 90 ? 'Storage limit exceeded' : 'Approaching plan limits'}
             </Typography>
@@ -276,7 +297,7 @@ const SubscriptionUsageWidget = () => {
       )}
 
       {/* Action Buttons */}
-      <Flex gap={2} flexWrap="wrap">
+      <Flex gap={2} style={{ flexWrap: 'wrap' }}>
         <Button 
           size="S" 
           variant="secondary" 
