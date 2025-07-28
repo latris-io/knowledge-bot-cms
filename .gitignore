@@ -129,3 +129,26 @@ dist
 build
 .strapi-updater.json
 .strapi-cloud.json
+
+############################
+# Temporary files
+############################
+
+test-*.js
+check-*.js
+fix-*.js
+debug-*.js
+verify-*.js
+*.tmp
+*.bak
+*.backup
+.cache
+temp/
+tmp/
+
+############################
+# IDE and Editor files
+############################
+
+.vscode/
+*.code-workspace
