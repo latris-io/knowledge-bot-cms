@@ -20,7 +20,14 @@
     "test:uc002": "jest --config=tests/integration/use-cases/jest.config.use-cases.js tests/integration/use-cases/test-uc002-toast-notifications.test.js",
     "test:uc003": "jest --config=tests/integration/use-cases/jest.config.use-cases.js tests/integration/use-cases/test-uc003-jwt-widget.test.js",
     "test:uc004": "jest --config=tests/integration/use-cases/jest.config.use-cases.js tests/integration/use-cases/test-uc004-file-upload.test.js",
-    "test:uc005": "jest --config=tests/integration/use-cases/jest.config.use-cases.js tests/integration/use-cases/test-uc005-ai-chat.test.js"
+    "test:uc005": "jest --config=tests/integration/use-cases/jest.config.use-cases.js tests/integration/use-cases/test-uc005-ai-chat.test.js",
+    "test:subscription": "node tests/integration/subscription/run-subscription-tests.js",
+    "test:subscription:billing": "jest tests/integration/subscription/test-billing-endpoints.test.js --verbose",
+    "test:subscription:validation": "jest tests/integration/subscription/test-subscription-validation.test.js --verbose",
+    "test:subscription:widget": "jest tests/integration/subscription/test-dashboard-widget.test.js --verbose",
+    "test:subscription:management": "jest tests/integration/subscription/test-billing-management.test.js --verbose",
+    "test:subscription-coverage": "jest --config=tests/config/subscription-billing.config.js --coverage",
+    "test:all": "npm run test:use-cases && npm run test:subscription-billing"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.520.0",
@@ -29,6 +36,8 @@
     "@strapi/plugin-users-permissions": "5.12.6",
     "@strapi/provider-upload-aws-s3": "^5.12.6",
     "@strapi/strapi": "5.12.6",
+    "axios": "^1.11.0",
+    "bcryptjs": "^3.0.2",
     "better-sqlite3": "^11.9.1",
     "jsonwebtoken": "^9.0.2",
     "markdown-it": "^14.1.0",
@@ -36,6 +45,8 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
+    "sqlite3": "^5.1.7",
+    "stripe": "^18.3.0",
     "styled-components": "^6.0.0"
   },
   "engines": {
@@ -48,6 +59,6 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "jest": "^30.0.4",
-    "supertest": "^7.1.3"
+    "supertest": "^7.1.4"
   }
 }

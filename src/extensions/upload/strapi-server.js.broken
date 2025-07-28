@@ -1,0 +1,101 @@
+'use strict';
+
+module.exports = (plugin) => {
+  // Extend the upload service to add company-based filtering
+  const originalFileService = plugin.services.file;
+  const originalFolderService = plugin.services.folder;
+
+  plugin.services.file = ({ strapi }) => {
+    const service = originalFileService({ strapi });
+
+    return {
+      ...service,
+      async find(params = {}) {
+        // Get the current user from the request context
+        const ctx = strapi.requestContext.get();
+        const user = ctx?.state?.user;
+
+        // If user has a company, filter files by company path
+        if (user?.company) {
+          params.filters = params.filters || {};
+          params.filters.$and = params.filters.$and || [];
+          
+          const companyPath = `/companies/${user.company.id}`;
+          params.filters.$and.push({
+            $or: [
+              { folderPath: { $startsWith: companyPath } },
+              { folderPath: companyPath }
+            ]
+          });
+        }
+
+        return service.find.call(this, params);
+      },
+
+      async findOne(id, params = {}) {
+        const file = await service.findOne.call(this, id, params);
+        
+        // Check if user has access to this file
+        const ctx = strapi.requestContext.get();
+        const user = ctx?.state?.user;
+        
+        if (user?.company && file) {
+          const companyPath = `/companies/${user.company.id}`;
+          if (!file.folderPath?.startsWith(companyPath)) {
+            return null;
+          }
+        }
+
+        return file;
+      }
+    };
+  };
+
+  plugin.services.folder = ({ strapi }) => {
+    const service = originalFolderService({ strapi });
+
+    return {
+      ...service,
+      async find(params = {}) {
+        // Get the current user from the request context
+        const ctx = strapi.requestContext.get();
+        const user = ctx?.state?.user;
+
+        // If user has a company, filter folders by company path
+        if (user?.company) {
+          params.filters = params.filters || {};
+          params.filters.$and = params.filters.$and || [];
+          
+          const companyPath = `/companies/${user.company.id}`;
+          params.filters.$and.push({
+            $or: [
+              { path: { $startsWith: companyPath } },
+              { path: companyPath }
+            ]
+          });
+        }
+
+        return service.find.call(this, params);
+      },
+
+      async findOne(id, params = {}) {
+        const folder = await service.findOne.call(this, id, params);
+        
+        // Check if user has access to this folder
+        const ctx = strapi.requestContext.get();
+        const user = ctx?.state?.user;
+        
+        if (user?.company && folder) {
+          const companyPath = `/companies/${user.company.id}`;
+          if (!folder.path?.startsWith(companyPath)) {
+            return null;
+          }
+        }
+
+        return folder;
+      }
+    };
+  };
+
+  return plugin;
+}; 

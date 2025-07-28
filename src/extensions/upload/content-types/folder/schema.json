@@ -48,6 +48,11 @@
       "type": "string",
       "minLength": 1,
       "required": true
+    },
+    "company": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::company.company"
     }
   }
 }

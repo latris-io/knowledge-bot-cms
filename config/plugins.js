@@ -1,6 +1,11 @@
 module.exports = ({ env }) => ({
   upload: {
+    enabled: true,  // Explicitly enable the upload plugin
     config: {
+      provider: 'local',  // Switch to local provider for testing
+      sizeLimit: 250 * 1024 * 1024, // 250mb in bytes - moved to config level
+      providerOptions: {},
+      /* Temporarily disabled AWS S3 configuration
       provider: 'aws-s3',
       providerOptions: {
         s3Options: {
@@ -25,6 +30,7 @@ module.exports = ({ env }) => ({
         },
         delete: {},
       },
+      */
     },
   },
   'users-permissions': {

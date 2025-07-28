@@ -1,0 +1,19 @@
+{
+  "kind": "singleType",
+  "collectionName": "file_ingestion_config",
+  "info": {
+    "singularName": "file-ingestion",
+    "pluralName": "file-ingestions",
+    "displayName": "File Ingestion Config",
+    "description": "Configuration for file ingestion service"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "api_enabled": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+} 

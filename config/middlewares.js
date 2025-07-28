@@ -10,7 +10,17 @@ module.exports = [
   'strapi::favicon',
   'strapi::public',
   {
+    name: 'global::admin-registration-extension',
+    config: {}
+  },
+  {
     name: 'global::assign-user-bot-to-upload',
     config: {},
   },
+  {
+    name: 'global::subscription-guard',
+    config: {
+      enabled: true
+    }
+  }
 ];

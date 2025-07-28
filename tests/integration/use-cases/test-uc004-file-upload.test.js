@@ -11,52 +11,80 @@
 // Disable Strapi setup for these standalone tests
 process.env.SKIP_STRAPI_SETUP = 'true';
 
-// Mock file upload middleware functionality
+// Set test environment to prevent database connections
+process.env.NODE_ENV = 'test';
+
+// Mock file upload lifecycle functionality
 class MockFileUploadProcessor {
   constructor() {
     this.uploadedFiles = [];
     this.fileEvents = [];
+    this.folders = {
+      '34': { path: '/bot-77', name: 'ClearlyClear - FAQ' },
+      '35': { path: '/bot-78', name: 'Acme Corporation - Support' },
+      '36': { path: '/documents', name: 'Documents' } // Non-bot folder
+    };
+    this.bots = {
+      77: { id: 77, name: 'FAQ', company: { id: 39, name: 'ClearlyClear' } },
+      78: { id: 78, name: 'Support', company: { id: 43, name: 'Acme Corporation' } }
+    };
   }
 
-  processFileUpload(file, user) {
-    // BR-016: Files require user, bot, company assignment
-    if (!user || !user.bot || !user.company) {
-      throw new Error('User must have both bot and company assigned');
-    }
-
-    const processedFile = {
-      ...file,
-      userId: user.id,
-      botId: user.bot.id,
-      companyId: user.company.id,
-      metadata: {
-        uploadedAt: new Date().toISOString(),
-        assignedUser: user.id,
-        assignedBot: user.bot.id,
-        assignedCompany: user.company.id
+  async processFileUpload(file, user, folderId) {
+    const processedFile = { ...file };
+    
+    // Always assign user if available
+    if (user) {
+      processedFile.userId = user.id;
+      
+      // Assign company from user
+      if (user.company) {
+        processedFile.companyId = user.company.id;
       }
-    };
+    }
+    
+    // BR-016: Bot is determined from folder path pattern /bot-{id}
+    if (folderId && this.folders[folderId]) {
+      const folder = this.folders[folderId];
+      const botMatch = folder.path.match(/^\/bot-(\d+)$/);
+      
+      if (botMatch) {
+        const botId = parseInt(botMatch[1]);
+        if (this.bots[botId]) {
+          processedFile.botId = botId;
+          
+          // BR-020: Company can be inherited from bot if user has no company
+          if (!processedFile.companyId && this.bots[botId].company) {
+            processedFile.companyId = this.bots[botId].company.id;
+      }
+        }
+      }
+    }
 
     this.uploadedFiles.push(processedFile);
 
-    // BR-017: File-events track processing status
+    // BR-017: File-events use schema: event_type='created', processing_status='pending'
+    if (processedFile.botId) {
     const fileEvent = {
       id: `event_${Date.now()}`,
-      fileId: file.id,
-      userId: user.id,
-      botId: user.bot.id,
-      companyId: user.company.id,
-      status: 'pending',
-      eventType: 'file_uploaded',
-      createdAt: new Date().toISOString()
+        file_document_id: file.id.toString(),
+        file_name: file.name,
+        file_type: file.mime,
+        file_size: file.size,
+        event_type: 'created',
+        processing_status: 'pending',
+        user_id: processedFile.userId,
+        bot_id: processedFile.botId,
+        company_id: processedFile.companyId
     };
 
     this.fileEvents.push(fileEvent);
+    }
 
     return {
       success: true,
       file: processedFile,
-      event: fileEvent
+      event: null // No direct event object returned here as per new structure
     };
   }
 
@@ -65,7 +93,7 @@ class MockFileUploadProcessor {
   }
 
   getEventsByFile(fileId) {
-    return this.fileEvents.filter(event => event.fileId === fileId);
+    return this.fileEvents.filter(event => event.file_document_id === fileId);
   }
 
   clearAll() {
@@ -97,11 +125,56 @@ describe('UC-004: File Upload Processing and User Assignment', () => {
   });
 
   describe('BR-016: Files Require User, Bot, Company Assignment', () => {
-    test('should successfully assign file to user with bot and company', () => {
+    test('should successfully assign file to user with bot folder', async () => {
       const user = {
         id: 1,
         username: 'testuser',
-        bot: { id: 10 },
+        company: { id: 39 }
+      };
+
+      const file = {
+        id: 'file_123',
+        filename: 'document.pdf',
+        size: 1024,
+        mimetype: 'application/pdf'
+      };
+
+      const folderId = '34'; // Bot folder /bot-77
+      const result = await processor.processFileUpload(file, user, folderId);
+
+      expect(result.success).toBe(true);
+      expect(result.file.userId).toBe(1);
+      expect(result.file.botId).toBe(77); // Bot ID from folder path
+      expect(result.file.companyId).toBe(39); // Company from user
+    });
+
+    test('should assign bot and company when file uploaded to bot folder', async () => {
+      const user = {
+        id: 1,
+        username: 'testuser',
+        company: { id: 43 }
+      };
+
+      const file = {
+        id: 'file_123',
+        filename: 'document.pdf',
+        size: 1024,
+        mimetype: 'application/pdf'
+      };
+
+      const folderId = '35'; // Bot folder /bot-78
+      const result = await processor.processFileUpload(file, user, folderId);
+
+      expect(result.success).toBe(true);
+      expect(result.file.userId).toBe(1);
+      expect(result.file.botId).toBe(78); // Bot ID from folder path
+      expect(result.file.companyId).toBe(43); // Company from user
+    });
+
+    test('should not assign bot when file uploaded to non-bot folder', async () => {
+      const user = {
+        id: 1,
+        username: 'testuser',
         company: { id: 20 }
       };
 
@@ -112,115 +185,115 @@ describe('UC-004: File Upload Processing and User Assignment', () => {
         mimetype: 'application/pdf'
       };
 
-      const result = processor.processFileUpload(file, user);
+      const folderId = '36'; // Non-bot folder /documents
+      const result = await processor.processFileUpload(file, user, folderId);
 
       expect(result.success).toBe(true);
       expect(result.file.userId).toBe(1);
-      expect(result.file.botId).toBe(10);
-      expect(result.file.companyId).toBe(20);
+      expect(result.file.botId).toBeUndefined(); // No bot for non-bot folder
+      expect(result.file.companyId).toBe(20); // Company from user
     });
 
-    test('should fail when user has no bot assigned', () => {
+    test('should inherit company from bot when user has no company', async () => {
       const user = {
         id: 1,
         username: 'testuser',
-        bot: null,
-        company: { id: 20 }
+        company: null // No company
       };
 
       const file = {
         id: 'file_123',
-        filename: 'document.pdf'
+        filename: 'document.pdf',
+        size: 1024,
+        mimetype: 'application/pdf'
       };
 
-      expect(() => {
-        processor.processFileUpload(file, user);
-      }).toThrow('User must have both bot and company assigned');
-    });
+      const folderId = '34'; // Bot folder /bot-77 (has company 39)
+      const result = await processor.processFileUpload(file, user, folderId);
 
-    test('should fail when user has no company assigned', () => {
-      const user = {
-        id: 1,
-        username: 'testuser',
-        bot: { id: 10 },
-        company: null
-      };
-
-      const file = {
-        id: 'file_123',
-        filename: 'document.pdf'
-      };
-
-      expect(() => {
-        processor.processFileUpload(file, user);
-      }).toThrow('User must have both bot and company assigned');
-    });
-
-    test('should fail when user has neither bot nor company', () => {
-      const user = {
-        id: 1,
-        username: 'testuser',
-        bot: null,
-        company: null
-      };
-
-      const file = {
-        id: 'file_123',
-        filename: 'document.pdf'
-      };
-
-      expect(() => {
-        processor.processFileUpload(file, user);
-      }).toThrow('User must have both bot and company assigned');
+      expect(result.success).toBe(true);
+      expect(result.file.userId).toBe(1);
+      expect(result.file.botId).toBe(77);
+      expect(result.file.companyId).toBe(39); // Company inherited from bot
     });
   });
 
   describe('BR-017: File-Events Track Processing Status', () => {
-    test('should create file-event record for each upload', () => {
+    test('should create file-event record for upload to bot folder', async () => {
       const user = {
         id: 5,
-        username: 'uploader',
-        bot: { id: 15 },
-        company: { id: 25 }
+        username: 'eventuser',
+        company: { id: 43 }
       };
 
       const file = {
         id: 'file_456',
         filename: 'presentation.pptx',
-        size: 2048
+        size: 2048,
+        mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
       };
 
-      const result = processor.processFileUpload(file, user);
+      const folderId = '35'; // Bot folder /bot-78
+      const result = await processor.processFileUpload(file, user, folderId);
 
-      expect(result.event).toBeDefined();
-      expect(result.event.fileId).toBe('file_456');
-      expect(result.event.userId).toBe(5);
-      expect(result.event.botId).toBe(15);
-      expect(result.event.companyId).toBe(25);
-      expect(result.event.status).toBe('pending');
-      expect(result.event.eventType).toBe('file_uploaded');
+      expect(result.success).toBe(true);
+      
+      // Check file-event was created
+      const events = processor.getEventsByFile('file_456');
+      expect(events).toHaveLength(1);
+      expect(events[0].event_type).toBe('created');
+      expect(events[0].processing_status).toBe('pending');
+      expect(events[0].user_id).toBe(5);
+      expect(events[0].bot_id).toBe(78);
+      expect(events[0].company_id).toBe(43);
     });
 
-    test('should allow tracking multiple events for same file', () => {
+    test('should not create file-event for non-bot folder upload', async () => {
       const user = {
-        id: 3,
-        bot: { id: 13 },
-        company: { id: 23 }
+        id: 5,
+        username: 'eventuser',
+        company: { id: 25 }
       };
 
-      const file1 = { id: 'file_001', filename: 'doc1.pdf' };
-      const file2 = { id: 'file_002', filename: 'doc2.pdf' };
+      const file = {
+        id: 'file_789',
+        filename: 'general.doc',
+        size: 1024,
+        mime: 'application/msword'
+      };
 
-      processor.processFileUpload(file1, user);
-      processor.processFileUpload(file2, user);
+      const folderId = '36'; // Non-bot folder /documents
+      const result = await processor.processFileUpload(file, user, folderId);
+
+      expect(result.success).toBe(true);
+      
+      // No file-event for non-bot uploads
+      const events = processor.getEventsByFile('file_789');
+      expect(events).toHaveLength(0);
+    });
+
+    test('should track multiple file events correctly', async () => {
+      const user = {
+        id: 3,
+        username: 'multiuser',
+        company: { id: 39 }
+      };
+
+      const file1 = { id: 'file_001', filename: 'doc1.pdf', size: 1024, mime: 'application/pdf' };
+      const file2 = { id: 'file_002', filename: 'doc2.pdf', size: 2048, mime: 'application/pdf' };
+
+      await processor.processFileUpload(file1, user, '34'); // Bot folder /bot-77
+      await processor.processFileUpload(file2, user, '34'); // Same bot folder
 
       const file1Events = processor.getEventsByFile('file_001');
       const file2Events = processor.getEventsByFile('file_002');
 
       expect(file1Events).toHaveLength(1);
       expect(file2Events).toHaveLength(1);
-      expect(file1Events[0].fileId).toBe('file_001');
-      expect(file2Events[0].fileId).toBe('file_002');
+      expect(file1Events[0].file_document_id).toBe('file_001');
+      expect(file2Events[0].file_document_id).toBe('file_002');
+      expect(file1Events[0].bot_id).toBe(77);
+      expect(file2Events[0].bot_id).toBe(77);
     });
   });
 
@@ -246,68 +319,64 @@ describe('UC-004: File Upload Processing and User Assignment', () => {
   });
 
   describe('BR-019: Metadata Assignment is Automatic', () => {
-    test('should automatically assign complete metadata to uploaded files', () => {
+    test('should automatically assign complete metadata to uploaded files', async () => {
       const user = {
         id: 7,
-        username: 'metadata_test',
-        bot: { id: 17 },
-        company: { id: 27 }
+        username: 'autouser',
+        company: { id: 39 } // Match the company for bot 77
       };
 
       const file = {
-        id: 'file_789',
-        filename: 'test-file.xlsx',
-        size: 4096,
-        mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        id: 'file_999',
+        filename: 'auto.doc',
+        size: 512,
+        mime: 'application/msword'
       };
 
-      const result = processor.processFileUpload(file, user);
+      const folderId = '34'; // Bot folder /bot-77
+      const result = await processor.processFileUpload(file, user, folderId);
 
       // Check automatic metadata assignment
-      expect(result.file.metadata).toBeDefined();
-      expect(result.file.metadata.uploadedAt).toBeDefined();
-      expect(result.file.metadata.assignedUser).toBe(7);
-      expect(result.file.metadata.assignedBot).toBe(17);
-      expect(result.file.metadata.assignedCompany).toBe(27);
-
-      // Check direct assignments
       expect(result.file.userId).toBe(7);
-      expect(result.file.botId).toBe(17);
-      expect(result.file.companyId).toBe(27);
+      expect(result.file.botId).toBe(77); // Bot ID 77 from folder 34
+      expect(result.file.companyId).toBe(39); // Company from user
     });
 
-    test('should preserve original file properties while adding metadata', () => {
+    test('should preserve original file properties while adding metadata', async () => {
       const user = {
         id: 9,
-        bot: { id: 19 },
-        company: { id: 29 }
+        username: 'preserveuser',
+        company: { id: 43 } // Match the company for bot 78
       };
 
       const originalFile = {
         id: 'file_original',
-        filename: 'important.doc',
-        size: 1536,
-        mimetype: 'application/msword',
-        customProperty: 'preserved'
+        filename: 'original.xlsx',
+        size: 4096,
+        mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        customProp: 'should-remain',
+        createdDate: '2024-01-01'
       };
 
-      const result = processor.processFileUpload(originalFile, user);
+      const folderId = '35'; // Bot folder /bot-78
+      const result = await processor.processFileUpload(originalFile, user, folderId);
 
       // Original properties preserved
       expect(result.file.id).toBe('file_original');
-      expect(result.file.filename).toBe('important.doc');
-      expect(result.file.size).toBe(1536);
-      expect(result.file.mimetype).toBe('application/msword');
-      expect(result.file.customProperty).toBe('preserved');
+      expect(result.file.filename).toBe('original.xlsx');
+      expect(result.file.size).toBe(4096);
+      expect(result.file.customProp).toBe('should-remain');
+      expect(result.file.createdDate).toBe('2024-01-01');
 
       // Metadata added
       expect(result.file.userId).toBe(9);
-      expect(result.file.metadata).toBeDefined();
+      expect(result.file.botId).toBe(78); // Bot ID 78 from folder 35
+      expect(result.file.companyId).toBe(43); // Company from user
     });
   });
 
   describe('Main Flow: Complete File Upload Processing', () => {
-    test('should complete full file upload workflow', () => {
+    test('should complete full file upload workflow', async () => {
       const user = {
         id: 11,
         username: 'workflow_test',
@@ -317,12 +386,12 @@ describe('UC-004: File Upload Processing and User Assignment', () => {
       };
 
       const files = [
-        { id: 'file_1', filename: 'report.pdf', size: 2048 },
-        { id: 'file_2', filename: 'data.csv', size: 1024 }
+        { id: 'file_1', filename: 'report.pdf', size: 2048, mimetype: 'application/pdf' },
+        { id: 'file_2', filename: 'data.csv', size: 1024, mimetype: 'text/csv' }
       ];
 
       // Process multiple files
-      const results = files.map(file => processor.processFileUpload(file, user));
+      const results = await Promise.all(files.map(file => processor.processFileUpload(file, user, '34'))); // Assuming all files are in folder 34
 
       // Verify all uploads succeeded
       expect(results.every(r => r.success)).toBe(true);
@@ -345,28 +414,33 @@ describe('UC-004: File Upload Processing and User Assignment', () => {
   });
 
   describe('Alternative Flows: Error Handling', () => {
-    test('should handle missing user gracefully', () => {
+    test('should handle missing user gracefully', async () => {
       const file = { id: 'file_test', filename: 'test.txt' };
 
-      expect(() => {
-        processor.processFileUpload(file, null);
-      }).toThrow();
+      // File can be uploaded without user, just won't have user/company assigned
+      const result1 = await processor.processFileUpload(file, null, '36');
+      expect(result1.success).toBe(true);
+      expect(result1.file.userId).toBeUndefined();
+      expect(result1.file.companyId).toBeUndefined();
 
-      expect(() => {
-        processor.processFileUpload(file, undefined);
-      }).toThrow();
+      const result2 = await processor.processFileUpload(file, undefined, '36');
+      expect(result2.success).toBe(true);
+      expect(result2.file.userId).toBeUndefined();
+      expect(result2.file.companyId).toBeUndefined();
     });
 
-    test('should handle malformed user data gracefully', () => {
+    test('should handle malformed user data gracefully', async () => {
       const file = { id: 'file_test', filename: 'test.txt' };
       const malformedUser = { id: 1 }; // Missing bot and company
 
-      expect(() => {
-        processor.processFileUpload(file, malformedUser);
-      }).toThrow('User must have both bot and company assigned');
+      // File can be uploaded, just won't have company assigned
+      const result = await processor.processFileUpload(file, malformedUser, '36');
+      expect(result.success).toBe(true);
+      expect(result.file.userId).toBe(1);
+      expect(result.file.companyId).toBeUndefined();
     });
 
-    test('should handle file metadata assignment failure gracefully', () => {
+    test('should handle file metadata assignment failure gracefully', async () => {
       const user = {
         id: 13,
         bot: { id: 23 },
@@ -375,9 +449,7 @@ describe('UC-004: File Upload Processing and User Assignment', () => {
 
       const file = null; // Invalid file
 
-      expect(() => {
-        processor.processFileUpload(file, user);
-      }).toThrow();
+      await expect(processor.processFileUpload(file, user, '34')).rejects.toThrow();
     });
   });
 

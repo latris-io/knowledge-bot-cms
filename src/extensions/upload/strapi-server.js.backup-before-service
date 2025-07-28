@@ -1,0 +1,129 @@
+'use strict';
+
+console.log('🚨🚨🚨 UPLOAD EXTENSION FILE IS BEING LOADED 🚨🚨🚨');
+
+module.exports = (plugin) => {
+  console.log('🚨 [UPLOAD EXTENSION] Loading upload extension with folder filtering');
+  
+  // Add middleware to filter folders based on company
+  if (plugin.routes && plugin.routes.admin && plugin.routes.admin.routes) {
+    plugin.routes.admin.routes.forEach(route => {
+      if (route.path === '/folders' && route.method === 'GET') {
+        console.log('📁 [UPLOAD EXTENSION] Adding folder filter middleware');
+        
+        // Add our middleware before the handler
+        route.config = route.config || {};
+        route.config.middlewares = route.config.middlewares || [];
+        route.config.middlewares.push(async (ctx, next) => {
+          console.log('🔍 [FOLDER MIDDLEWARE] Filtering folders for user');
+          
+          try {
+            // Get the authenticated user
+            let user = ctx.state.user;
+            
+            if (user) {
+              console.log(`📁 [FOLDER MIDDLEWARE] User detected: ${user.email} (ID: ${user.id}, DocumentID: ${user.documentId})`);
+              
+              // Always reload the user to get the company relation
+              // Use documentId for filtering in Strapi v5
+              try {
+                const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+                  filters: { documentId: user.documentId },
+                  limit: 1,
+                  populate: ['company']
+                });
+                
+                console.log(`   Query result: ${users ? users.length : 0} users found`);
+                
+                if (users && users.length > 0) {
+                  user = users[0];
+                  console.log('   User reloaded successfully');
+                  console.log('   Company:', user.company ? `${user.company.name} (ID: ${user.company.id})` : 'NOT ASSIGNED');
+                } else {
+                  console.log('   Failed to reload user - no results');
+                  // Try with email as fallback
+                  const usersByEmail = await strapi.entityService.findMany('plugin::users-permissions.user', {
+                    filters: { email: user.email },
+                    limit: 1,
+                    populate: ['company']
+                  });
+                  if (usersByEmail && usersByEmail.length > 0) {
+                    user = usersByEmail[0];
+                    console.log('   User found by email fallback');
+                    console.log('   Company:', user.company ? `${user.company.name} (ID: ${user.company.id})` : 'NOT ASSIGNED');
+                  }
+                }
+              } catch (error) {
+                console.error('   Error reloading user:', error.message);
+              }
+            }
+            
+            // Handle admin panel access
+            if (!user && ctx.state.admin) {
+              console.log('📁 [FOLDER MIDDLEWARE] Admin user detected');
+              const adminUser = ctx.state.admin;
+              console.log('   Admin email:', adminUser.email);
+              
+              try {
+                const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+                  filters: { email: adminUser.email },
+                  limit: 1,
+                  populate: ['company']
+                });
+                user = users[0];
+                console.log('   Found user:', user ? `${user.email} (ID: ${user.id})` : 'none');
+                console.log('   User company:', user?.company ? `${user.company.name} (ID: ${user.company.id})` : 'none');
+              } catch (error) {
+                console.error('   Error loading admin user:', error.message);
+              }
+            }
+            
+            if (user && user.company) {
+              const companyId = user.company.id || user.company;
+              console.log(`📁 [FOLDER MIDDLEWARE] Filtering for company ID: ${companyId}`);
+              
+              // Get all bots for this company
+              try {
+                const companyBots = await strapi.entityService.findMany('api::bot.bot', {
+                  filters: { company: companyId },
+                  fields: ['id']
+                });
+                const botIds = companyBots.map(bot => bot.id);
+                console.log(`📁 [FOLDER MIDDLEWARE] Company ${companyId} has bot IDs: ${botIds.join(', ') || 'none'}`);
+                
+                // Add company filter to the query
+                const existingFilters = ctx.query?.filters || {};
+                ctx.query.filters = {
+                  ...existingFilters,
+                  $or: [
+                    // Folders with explicit company association
+                    { company: companyId },
+                    // Bot folders for this company's bots
+                    { path: { $in: botIds.map(id => `/bot-${id}`) } },
+                    // Root folder if no company is set
+                    { $and: [{ path: '/' }, { company: null }] }
+                  ]
+                };
+                
+                console.log('📁 [FOLDER MIDDLEWARE] Applied filters:', JSON.stringify(ctx.query.filters, null, 2));
+              } catch (error) {
+                console.error('   Error getting bots:', error.message);
+              }
+            } else {
+              console.log('📁 [FOLDER MIDDLEWARE] No user or company found - no filtering applied');
+              console.log('   User exists:', !!user);
+              console.log('   User has company:', !!user?.company);
+            }
+          } catch (error) {
+            console.error('📁 [FOLDER MIDDLEWARE] Unexpected error:', error.message);
+          }
+          
+          // Continue to the original handler
+          await next();
+        });
+      }
+    });
+  }
+  
+  return plugin;
+}; 

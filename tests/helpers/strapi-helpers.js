@@ -15,22 +15,32 @@ async function setupStrapi() {
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
-    // Set up test environment
+    // Set up test environment - this is critical for config loading
     process.env.NODE_ENV = 'test';
+    
+    // Clear any existing test database
+    const testDbPath = path.join(tempDir, 'test.db');
+    if (fs.existsSync(testDbPath)) {
+      fs.unlinkSync(testDbPath);
+    }
 
-    // Create Strapi instance - it will use the test database configuration
-    instance = await createStrapi({
-      appDir: path.join(__dirname, '..', '..'),
-      distDir: path.join(__dirname, '..', '..', 'dist'),
-      autoReload: false,
-      serveAdminPanel: false,
-      admin: {
-        autoOpen: false,
-      },
-    }).load();
+    try {
+      // Create Strapi instance - use test environment configuration
+      instance = await createStrapi({
+        appDir: path.join(__dirname, '..', '..'),
+        distDir: path.join(__dirname, '..', '..', 'dist'),
+        autoReload: false,
+        serveAdminPanel: false
+      }).load();
 
-    // Make strapi available globally
-    global.strapi = instance;
+      // Make strapi available globally
+      global.strapi = instance;
+      
+      console.log('✅ Strapi test instance created successfully');
+    } catch (error) {
+      console.error('❌ Failed to create Strapi test instance:', error);
+      throw error;
+    }
   }
 
   return instance;

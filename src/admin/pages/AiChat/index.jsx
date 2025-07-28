@@ -108,6 +108,10 @@ const AiChat = () => {
   // Real user data state - memoized for performance
   const [user, setUser] = useState(null);
   const [userLoading, setUserLoading] = useState(true);
+  
+  // Company-based bot selection state
+  const [companyBots, setCompanyBots] = useState([]);
+  const [selectedBotId, setSelectedBotId] = useState(null);
 
   // Optimized scroll to bottom - instant for performance
   const scrollToBottom = useCallback(() => {
@@ -158,14 +162,6 @@ const AiChat = () => {
 
       const adminUserData = await adminUserResponse.json();
       
-      // Since admin users can see bot and company assignments in Content Manager,
-      // we need to get this data from the admin API or use a workaround.
-      // For now, let's check if there's a way to get user data with populated relations via admin API
-      
-      // Try to get the user's bot and company data from the users-permissions collection via admin API
-      let botData = null;
-      let companyData = null;
-      
       // Get the email - admin users have nested data structure
       const userEmail = adminUserData.data?.email || adminUserData.data?.username || adminUserData.email || adminUserData.username;
       
@@ -173,119 +169,59 @@ const AiChat = () => {
         throw new Error('Could not determine user email from admin user data. Admin user data: ' + JSON.stringify(adminUserData.data || adminUserData));
       }
       
+      // Use the bot-management API to get all bots for the user's company
       try {
-        // Try to find the corresponding users-permissions user by email
-        // Add publicationState=preview to get DRAFT versions (matching admin interface)
-        const usersPermissionsResponse = await fetch(`/content-manager/collection-types/plugin::users-permissions.user?filters[$and][0][email][$eq]=${encodeURIComponent(userEmail)}&populate[bot]=*&populate[company]=*&publicationState=preview`, {
+        const botManagementResponse = await fetch('/api/bot-management/list', {
           method: 'GET',
           headers,
           credentials: 'include',
         });
         
-                if (usersPermissionsResponse.ok) {
-          const usersData = await usersPermissionsResponse.json();
-          
-          if (usersData.results && usersData.results.length > 0) {
-            const userRecord = usersData.results[0];
-            botData = userRecord.bot;
-            companyData = userRecord.company;
-          } else {
-            console.error('No users-permissions user found with email:', userEmail);
-          }
-        } else {
-          console.error('Users-permissions query failed:', usersPermissionsResponse.status);
+        if (!botManagementResponse.ok) {
+          throw new Error(`Failed to fetch bots: ${botManagementResponse.status} ${botManagementResponse.statusText}`);
         }
-      } catch (err) {
-        console.error('Error calling users-permissions API:', err.message);
-      }
-      
-      // Validate that we have the required bot and company data
-      if (!botData) {
-        throw new Error('No bot assigned to your user account. Please contact your administrator to assign a bot in the Users collection.');
-      }
-      
-      if (!companyData) {
-        throw new Error('No company assigned to your user account. Please contact your administrator to assign a company in the Users collection.');
-      }
-      
-      // Create user data object with real bot and company relations
-      const userDataWithBotAndCompany = {
-        id: adminUserData.data?.id || adminUserData.id,
-        email: userEmail,
-        firstname: adminUserData.data?.firstname || adminUserData.firstname, 
-        lastname: adminUserData.data?.lastname || adminUserData.lastname,
-        // Real bot and company data from Content Manager API
-        bot: botData,
-        company: companyData
-      };
-      
-      setUser(userDataWithBotAndCompany);
-      
-      // Generate JWT token with REAL company and bot IDs (not hardcoded)
-      if (userDataWithBotAndCompany.company?.id && userDataWithBotAndCompany.bot?.id) {
-                        // EFFICIENT SOLUTION: Query for specific draft versions by documentId
-        let draftBotId = null;
-        let draftCompanyId = null;
         
-        try {
-          // Query for specific draft bot by documentId (much more efficient)
-          const draftBotResponse = await fetch(`/content-manager/collection-types/api::bot.bot?filters[documentId][$eq]=${userDataWithBotAndCompany.bot.documentId}&publicationState=preview`, {
-            method: 'GET',
-            headers,
-            credentials: 'include',
-          });
-          
-          // Query for specific draft company by documentId (much more efficient)  
-          const draftCompanyResponse = await fetch(`/content-manager/collection-types/api::company.company?filters[documentId][$eq]=${userDataWithBotAndCompany.company.documentId}&publicationState=preview`, {
-            method: 'GET',
-            headers,
-            credentials: 'include',
-          });
-          
-          if (draftBotResponse.ok) {
-            const draftBotData = await draftBotResponse.json();
-                         if (draftBotData.results && draftBotData.results.length > 0) {
-               draftBotId = draftBotData.results[0].id;
-             }
-          }
-          
-          if (draftCompanyResponse.ok) {
-            const draftCompanyData = await draftCompanyResponse.json();
-                         if (draftCompanyData.results && draftCompanyData.results.length > 0) {
-               draftCompanyId = draftCompanyData.results[0].id;
-             }
-          }
-        } catch (err) {
-          console.error('Error fetching draft versions:', err);
+        const botData = await botManagementResponse.json();
+        const bots = botData.data?.data || botData.data || [];
+        
+        if (bots.length === 0) {
+          throw new Error('No bots found for your company. Please contact your administrator.');
         }
-         
-         const payload = {
-           company_id: draftCompanyId || userDataWithBotAndCompany.company.id, // Use draft ID or fallback
-           bot_id: draftBotId || userDataWithBotAndCompany.bot.id, // Use draft ID or fallback
-         };
-         
-         console.log('🚀 JWT Token Generated - Company ID:', payload.company_id, 'Bot ID:', payload.bot_id);
         
-        const token = await createJWT(payload, 'my-ultra-secure-signing-key');
+        // Extract company from the first bot
+        const companyData = bots[0].company;
+        if (!companyData) {
+          throw new Error('No company data found. Please contact your administrator.');
+        }
         
-        setJwtToken(token);
- 
-        // Add welcome message
-        setMessages([
-          {
-            id: 1,
-            role: 'assistant',
-            content: 'Hello! I\'m your AI assistant, ready to help you explore and understand your knowledge base. What would you like to discover today?',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }
-        ]);
- 
+        // Set company bots
+        setCompanyBots(bots);
+        
+        // Select the first bot by default
+        const defaultBot = bots[0];
+        setSelectedBotId(defaultBot.id);
+        
+        // Create user data object with company info
+        const userDataWithCompany = {
+          id: adminUserData.data?.id || adminUserData.id,
+          email: userEmail,
+          firstname: adminUserData.data?.firstname || adminUserData.firstname, 
+          lastname: adminUserData.data?.lastname || adminUserData.lastname,
+          company: companyData
+        };
+        
+        setUser(userDataWithCompany);
+        
         // Clear any previous errors
         setError('');
+        
+      } catch (err) {
+        console.error('Error fetching company bots:', err);
+        throw new Error(err.message || 'Failed to load company bots');
       }
-
+      
     } catch (error) {
-      setError(`Auth failed: ${error.message}. Please ensure you're logged into Strapi admin and have bot/company assigned.`);
+      setError(`Auth failed: ${error.message}. Please ensure you're logged into Strapi admin.`);
     } finally {
       setUserLoading(false);
     }
@@ -330,6 +266,45 @@ const AiChat = () => {
     };
     initializeChat();
   }, [fetchUserData]);
+  
+  // Generate JWT token when bot is selected
+  useEffect(() => {
+    const generateToken = async () => {
+      if (!selectedBotId || !user?.company || companyBots.length === 0) return;
+      
+      try {
+        const selectedBot = companyBots.find(bot => bot.id === selectedBotId);
+        if (!selectedBot) return;
+        
+        const payload = {
+          company_id: user.company.id,
+          bot_id: selectedBotId
+        };
+        
+        console.log('🚀 JWT Token Generated - Company ID:', payload.company_id, 'Bot ID:', payload.bot_id);
+        
+        const token = await createJWT(payload, 'my-ultra-secure-signing-key');
+        setJwtToken(token);
+        
+        // Add welcome message on first load
+        if (messages.length === 0) {
+          setMessages([
+            {
+              id: 1,
+              role: 'assistant',
+              content: 'Hello! I\'m your AI assistant, ready to help you explore and understand your knowledge base. What would you like to discover today?',
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+          ]);
+        }
+      } catch (err) {
+        console.error('Error generating JWT:', err);
+        setError('Failed to generate authentication token');
+      }
+    };
+    
+    generateToken();
+  }, [selectedBotId, user, companyBots]);
 
   const handleSend = useCallback(async () => {
             if (!input.trim() || isLoading || !jwtToken || !user) return;
@@ -541,7 +516,7 @@ const AiChat = () => {
                   msg.id === assistantMessage.id
                     ? { 
                         ...msg, 
-                        rawContent: '', // Clear raw content
+                        rawContent: cleanText, // Keep the raw content for debug mode
                         content: mainHtml, // Set formatted HTML
                         sources: uniqueSources.map((src, idx) => ({ 
                           id: idx + 1, 
@@ -687,10 +662,10 @@ const AiChat = () => {
         const uniqueSources = [...new Set(allSources)];
         
         // Remove [source: ...] from main text
-                  raw = raw.replace(/\[source: .+?\]/g, "").trim();
+        const cleanedRaw = raw.replace(/\[source: .+?\]/g, "").trim();
         
         // Parse markdown to HTML using widget's preprocessing
-        const mainHtml = parseMarkdown(raw);
+        const mainHtml = parseMarkdown(cleanedRaw);
         
         setMessages(prevMessages =>
           prevMessages.map(msg =>
@@ -698,6 +673,7 @@ const AiChat = () => {
               ? { 
                   ...msg, 
                   content: mainHtml,
+                  rawContent: cleanedRaw, // Store the raw content for debug mode
                   sources: uniqueSources.map((src, idx) => ({ 
                     id: idx + 1, 
                     text: src, 
@@ -832,7 +808,7 @@ const AiChat = () => {
           maxWidth: '400px',
           lineHeight: '1.5'
         }}>
-          Please ensure your user account has both a Bot and Company assigned, or contact your administrator for assistance.
+          Please ensure your user account has a Company assigned, or contact your administrator for assistance.
         </div>
       </div>
     );
@@ -1018,6 +994,60 @@ const AiChat = () => {
                 {jwtToken ? 'Connected' : 'Connecting...'}
               </div>
             </div>
+            
+            {/* Bot Selector - Glassmorphism Style */}
+            {companyBots.length > 0 && (
+              <div style={{
+                marginTop: '16px',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <label style={{
+                  fontSize: '12px',
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  fontWeight: '500'
+                }}>
+                  Bot:
+                </label>
+                <select
+                  value={selectedBotId || ''}
+                  onChange={(e) => setSelectedBotId(Number(e.target.value))}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    backdropFilter: 'blur(20px)',
+                    outline: 'none',
+                    transition: 'all 0.3s ease',
+                    minWidth: '150px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                  }}
+                >
+                  {companyBots.map(bot => (
+                    <option key={bot.id} value={bot.id} style={{
+                      background: '#1a1a1a',
+                      color: '#ffffff'
+                    }}>
+                      {bot.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
             
           {/* Debug Toggle - Glassmorphism Style */}

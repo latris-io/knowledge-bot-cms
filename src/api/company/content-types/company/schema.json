@@ -25,6 +25,12 @@
       "target": "plugin::users-permissions.user",
       "mappedBy": "company"
     },
+    "bots": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::bot.bot",
+      "mappedBy": "company"
+    },
     "files": {
       "type": "relation",
       "relation": "oneToMany",
@@ -62,11 +68,39 @@
       "min": 1,
       "required": true
     },
-    "notification_preferences": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::user-notification-preference.user-notification-preference",
-      "mappedBy": "company"
+
+    "subscription_status": {
+      "type": "enumeration",
+      "enum": ["trial", "active", "past_due", "canceled", "unpaid"],
+      "default": "trial"
+    },
+    "plan_level": {
+      "type": "enumeration", 
+      "enum": ["starter", "professional", "enterprise"],
+      "default": "starter"
+    },
+    "storage_used_bytes": {
+      "type": "biginteger",
+      "default": 0
+    },
+    "storage_limit_bytes": {
+      "type": "biginteger",
+      "default": 2147483648
+    },
+    "storage_updated_at": {
+      "type": "datetime"
+    },
+    "stripe_customer_id": {
+      "type": "string"
+    },
+    "stripe_subscription_id": {
+      "type": "string"
+    },
+    "current_period_start": {
+      "type": "datetime"
+    },
+    "current_period_end": {
+      "type": "datetime"
     }
   }
 }

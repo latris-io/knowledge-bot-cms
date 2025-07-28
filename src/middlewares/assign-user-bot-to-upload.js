@@ -1,207 +1,199 @@
 'use strict';
 
-const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
+/**
+ * `assign-user-bot-to-upload` middleware
+ * This middleware automatically assigns user, bot, and company relations to uploaded files.
+ * It determines the bot based on the folder the file is uploaded to.
+ */
 
 module.exports = (config, { strapi }) => {
   return async (ctx, next) => {
-    // Check if request is a POST to /upload or /upload?id=..., but exclude /upload/actions/*
-    if (
-      ctx.method !== 'POST' ||
-      !ctx.url.startsWith('/upload') ||
-      ctx.url.startsWith('/upload/actions')
-    ) {
-      console.log('🔵 Skipping middleware: Not a POST to /upload or is /upload/actions/*', {
-        method: ctx.method,
-        url: ctx.url,
-      });
+    console.log('🔍 Upload middleware called for:', ctx.request.method, ctx.request.url);
+    
+    // Only process POST requests to upload endpoints
+    if (ctx.request.method !== 'POST' || !ctx.request.url.includes('/upload')) {
       return await next();
     }
-
-    console.log('🚀 File upload middleware triggered at:', new Date().toISOString());
-    console.log('🔍 Request URL:', ctx.url);
-    console.log('🔍 Query params:', ctx.query);
-    console.log('🔍 Request body:', ctx.request.body);
-
-    // Check file extension restrictions
-    const uploadConfig = strapi.config.get('plugin.upload');
-    const allowedExtensions = uploadConfig?.providerOptions?.allowedExtensions;
     
-    if (allowedExtensions) {
-      let fileName = null;
+    // Skip if this is an upload action (like delete)
+    if (ctx.request.url.includes('/actions/')) {
+      return await next();
+    }
+    
+    // Store the original response
+    const originalSend = ctx.send;
+    
+    // Override ctx.send to intercept the response
+    ctx.send = async function(data) {
+      console.log('📤 Upload response intercepted');
       
-      // Check if file info is in request body (fileInfo JSON)
-      if (ctx.request.body && ctx.request.body.fileInfo) {
-        try {
-          const fileInfo = JSON.parse(ctx.request.body.fileInfo);
-          fileName = fileInfo.name;
-        } catch (e) {
-          console.log('🔴 Error parsing fileInfo:', e.message);
-        }
-      }
-      
-      // Check if files are in request.files
-      if (!fileName && ctx.request.files && ctx.request.files.files) {
-        const files = Array.isArray(ctx.request.files.files) ? ctx.request.files.files : [ctx.request.files.files];
-        if (files[0] && files[0].name) {
-          fileName = files[0].name;
-        }
-      }
-      
-      if (fileName) {
-        const fileExtension = require('path').extname(fileName).toLowerCase();
+      // Process uploaded files if successful
+      if (ctx.response.status === 201 && Array.isArray(data)) {
+        console.log(`✅ Upload successful - processing ${data.length} file(s)`);
         
-        if (!allowedExtensions.includes(fileExtension)) {
-          console.log(`🚫 File type '${fileExtension}' is not allowed. Allowed types: ${allowedExtensions.join(', ')}`);
-          return ctx.badRequest(`File type '${fileExtension}' is not allowed. Allowed types: ${allowedExtensions.join(', ')}`);
+        // Process each uploaded file
+        for (const file of data) {
+          if (file && file.id) {
+            try {
+              let updateData = {};
+              
+              // Get the user context
+              let user = ctx.state.user;
+              let isAdminUpload = false;
+              
+              // Check for admin user
+              if (!user && ctx.state.admin) {
+                console.log('👤 Admin upload detected');
+                isAdminUpload = true;
+                
+                // Find the user account associated with this admin
+                const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+                  filters: { email: ctx.state.admin.email },
+                  limit: 1,
+                  populate: ['company']
+                });
+                
+                if (users && users.length > 0) {
+                  user = users[0];
+                  console.log(`✅ Found user for admin: ${user.email}`);
+                }
+              }
+              
+              if (user) {
+                console.log(`👤 Processing upload for user: ${user.email} (Admin: ${isAdminUpload})`);
+                
+                // Get user with company relation if not already populated
+                if (!user.company || typeof user.company === 'number') {
+                  const fullUser = await strapi.entityService.findOne(
+                    'plugin::users-permissions.user',
+                    user.id,
+                    { populate: ['company'] }
+                  );
+                  if (fullUser) {
+                    user = fullUser;
+                  }
+                }
+                
+                updateData.user = user.id;
+                
+                // Set company from user
+                if (user.company) {
+                  updateData.company = user.company.id || user.company;
+                  console.log(`🏢 User company: ${user.company.name || 'ID: ' + updateData.company}`);
+                }
+              }
+              
+              // Determine bot from folder
+              if (file.folder) {
+                console.log(`📂 File uploaded to folder ID: ${file.folder}`);
+                
+                // Get folder details
+                const folder = await strapi.entityService.findOne(
+                  'plugin::upload.folder',
+                  file.folder,
+                  { fields: ['path', 'name'] }
+                );
+                
+                if (folder) {
+                  console.log(`📁 Folder path: ${folder.path}, name: ${folder.name}`);
+                  
+                  // Check if this is a bot folder (pattern: /bot-{id})
+                  const botMatch = folder.path.match(/^\/bot-(\d+)$/);
+                  if (botMatch) {
+                    const botId = parseInt(botMatch[1]);
+                    console.log(`🤖 Bot folder detected - Bot ID: ${botId}`);
+                    
+                    // Verify bot exists and get its company
+                    const bot = await strapi.entityService.findOne('api::bot.bot', botId, {
+                      populate: ['company']
+                    });
+                    
+                    if (bot) {
+                      updateData.bot = botId;
+                      console.log(`✅ Bot found: ${bot.name}`);
+                      
+                      // Use bot's company if user doesn't have one
+                      if (!updateData.company && bot.company) {
+                        updateData.company = bot.company.id;
+                        console.log(`🏢 Using bot's company: ${bot.company.name}`);
+                      }
+                    } else {
+                      console.log(`⚠️ Bot with ID ${botId} not found`);
+                    }
+                  } else {
+                    console.log(`ℹ️ Not a bot folder: ${folder.path}`);
+                  }
+                } else {
+                  console.log(`⚠️ Could not find folder with ID: ${file.folder}`);
+                }
+              } else {
+                console.log(`⚠️ File has no folder assigned`);
+              }
+              
+              // Update the file with relations
+              if (Object.keys(updateData).length > 0) {
+                console.log(`📝 Updating file ${file.id} with relations:`, updateData);
+                
+                const updatedFile = await strapi.entityService.update('plugin::upload.file', file.id, {
+                  data: updateData
+                });
+                
+                console.log(`✅ File ${file.name} updated successfully`);
+                console.log(`📋 Updated file bot relation:`, updatedFile.bot);
+                
+                // Update the file object in the response data
+                if (updatedFile.bot) {
+                  file.bot = updatedFile.bot;
+                }
+                if (updatedFile.user) {
+                  file.user = updatedFile.user;
+                }
+                if (updatedFile.company) {
+                  file.company = updatedFile.company;
+                }
+                
+                // Create file-event record if bot is assigned
+                if (updateData.bot) {
+                  try {
+                    await strapi.entityService.create('api::file-event.file-event', {
+                      data: {
+                        file_id: file.id,
+                        file_name: file.name,
+                        file_path: file.url,
+                        status: 'uploaded',
+                        event_type: 'upload',
+                        event_timestamp: new Date(),
+                        user: updateData.user,
+                        bot: updateData.bot,
+                        company: updateData.company,
+                        metadata: {
+                          size: file.size,
+                          mime: file.mime,
+                          ext: file.ext
+                        }
+                      }
+                    });
+                    console.log('📊 File event created for tracking');
+                  } catch (error) {
+                    console.error('❌ Error creating file event:', error);
+                  }
+                }
+              } else {
+                console.log('⚠️ No relations to set for file');
+              }
+            } catch (error) {
+              console.error(`❌ Error updating file ${file.id} relations:`, error);
+            }
+          }
         }
       }
-    }
-
-    const isReplacement = !!ctx.query.id || ctx.request.body.ref || ctx.request.body.refId || ctx.request.body.field;
-    const eventType = isReplacement ? 'updated' : 'created';
-    console.log('📌 Event type:', eventType, '(isReplacement:', isReplacement, ', query.id:', ctx.query.id, ')');
-
-    let user = null;
-    const authHeader = ctx.request.header.authorization;
-    console.log('🔍 Authorization header:', authHeader ? 'Present' : 'Missing');
-
-    if (authHeader?.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        const jwtSecret = strapi.config.get('admin.jwtSecret') || process.env.ADMIN_JWT_SECRET;
-        if (!jwtSecret) {
-          console.error('🔴 Missing JWT secret');
-          return ctx.throw(400, 'JWT secret not configured');
-        }
-
-        const decoded = jwt.verify(token, jwtSecret);
-        if (decoded?.id) {
-          user = await strapi.entityService.findOne(
-            'plugin::users-permissions.user',
-            decoded.id,
-            { populate: ['bot', 'company'] }
-          );
-          console.log('✅ Found user:', user ? { id: user.id, bot: user.bot?.id, company: user.company?.id } : 'null');
-        }
-      } catch (err) {
-        console.error('🔴 JWT verification failed:', err.message);
-      }
-    }
-
-    // Parse fileInfo
-    let fileInfo = {};
-    if (ctx.request.body.fileInfo) {
-      try {
-        fileInfo = typeof ctx.request.body.fileInfo === 'string'
-          ? JSON.parse(ctx.request.body.fileInfo)
-          : ctx.request.body.fileInfo;
-        console.log('📝 Parsed fileInfo:', fileInfo);
-      } catch (error) {
-        console.error('🔴 Error parsing fileInfo:', error.message);
-      }
-    }
-
-    if (user) {
-      fileInfo.user = user.id;
-      fileInfo.bot = user.bot?.id;
-      fileInfo.company = user.company?.id;
-      fileInfo.user_id = user.id;
-      fileInfo.bot_id = user.bot?.id;
-      fileInfo.company_id = user.company?.id;
-      ctx.request.body.fileInfo = JSON.stringify(fileInfo);
-      console.log('📝 Updated fileInfo with user data:', fileInfo);
-    } else {
-      console.log('⚠️ No user data added to fileInfo');
-    }
-
-    await next();
-
-    const { status, body } = ctx.response;
-    console.log('🔍 Response status:', status, 'body:', body);
-
-    if (status !== 201 && status !== 200) {
-      console.warn('⚠️ Upload failed:', { status, body });
-      return;
-    }
-
-    const uploadedFile = Array.isArray(body) ? body[0] : body;
-    console.log('📋 Full uploadedFile contents:', JSON.stringify(uploadedFile, null, 2));
-    if (!uploadedFile?.id) {
-      console.error('🔴 Uploaded file missing ID:', uploadedFile);
-      return;
-    }
-
-    console.log('✅ Uploaded file ID:', uploadedFile.id);
-
-    // Update metadata first
-    let documentId = uploadedFile.documentId;
-    if (user && user.bot?.id && user.company?.id) {
-      try {
-        const freshFile = await strapi.entityService.findOne(
-          'plugin::upload.file',
-          uploadedFile.id,
-          { populate: ['user', 'bot', 'company'] }
-        );
-
-        const extraUpdateData = {
-          user: user.id,
-          bot: user.bot.id,
-          company: user.company.id,
-          user_id: user.id,
-          bot_id: user.bot.id,
-          company_id: user.company.id,
-          source_type: 'manual_upload',
-          storage_key: `${freshFile.hash}${freshFile.ext}`,
-          document_uid: freshFile.document_uid || uuidv4(),
-        };
-
-        if (freshFile.mime?.startsWith('audio/') || freshFile.mime?.startsWith('video/')) {
-          extraUpdateData.transcription_status = 'pending';
-        }
-
-        if (freshFile.folderPath) {
-          extraUpdateData.folderPath = freshFile.folderPath.replace(/\/+/g, '/');
-        }
-
-        const updatedFile = await strapi.entityService.update(
-          'plugin::upload.file',
-          uploadedFile.id,
-          { data: extraUpdateData }
-        );
-
-        documentId = updatedFile.documentId;
-        console.log('✅ File metadata updated successfully:', extraUpdateData);
-      } catch (err) {
-        console.error('🔴 Failed to update file metadata:', err.message);
-      }
-    } else {
-      console.log('⚠️ Skipping metadata update: Missing user or bot/company');
-    }
-
-    // Log file event after metadata is fully updated
-    try {
-      const eventData = {
-        event_type: eventType,
-        file_document_id: documentId,
-        processed: false,
-        bot_id: user?.bot?.id || null,
-        company_id: user?.company?.id || null,
-        user_id: user?.id || null,
-        file_name: uploadedFile?.name || null,
-      };
-      console.log('📝 Creating file-event with data:', eventData);
-
-      await strapi.entityService.create('api::file-event.file-event', {
-        data: eventData,
-      });
-
-      console.log(`📦 File event (${eventType}) logged for document ID: ${documentId}`);
       
-      // Log notification message
-      console.log(`📧 User will receive email notification once "${uploadedFile?.name}" has been processed and is ready for use by their AI bot.`);
-    } catch (err) {
-      console.error('🔴 Failed to log file event:', err.message);
-    }
+      // Call the original send
+      originalSend.call(this, data);
+    };
+    
+    await next();
   };
 };
+
+

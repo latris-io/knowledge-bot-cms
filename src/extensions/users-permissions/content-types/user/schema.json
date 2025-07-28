@@ -65,40 +65,110 @@
       "inversedBy": "users",
       "configurable": false
     },
-    "bot": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::bot.bot",
-      "inversedBy": "users"
-    },
-    "files": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "plugin::upload.file",
-      "mappedBy": "user"
-    },
     "company": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::company.company",
       "inversedBy": "users"
     },
-    "notification_preferences": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::user-notification-preference.user-notification-preference",
-      "mappedBy": "user"
+    "notification_channel": {
+      "type": "enumeration",
+      "enum": ["email", "sms", "webhook"],
+      "required": false
     },
-    "instructions": {
-      "type": "text",
+    "notification_frequency": {
+      "type": "enumeration",
+      "enum": ["immediate", "hourly", "daily"],
+      "required": false
+    },
+    "email_format": {
+      "type": "enumeration",
+      "enum": ["detailed", "summary", "minimal"],
+      "required": false
+    },
+    "include_failures": {
+      "type": "boolean",
+      "default": false,
+      "required": false
+    },
+    "include_successes": {
+      "type": "boolean",
+      "default": false,
+      "required": false
+    },
+    "include_processing": {
+      "type": "boolean",
+      "default": false,
       "required": false,
-      "configurable": true,
-      "pluginOptions": {
-        "content-manager": {
-          "visible": true,
-          "editable": false
-        }
-      }
+      "description": "Include files that are still being processed when the notification is sent"
+    },
+    "cc_email": {
+      "type": "email"
+    },
+    "notification_grouping_window": {
+      "type": "integer",
+      "min": 0,
+      "max": 3600,
+      "required": false
+    },
+    "billing_notifications": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "subscription_reminders": {
+      "type": "boolean", 
+      "default": true,
+      "required": true,
+      "description": "Receive reminders about upcoming subscription renewals and plan changes. Use Case: Help users stay aware of their subscription lifecycle to avoid service interruptions. Example: 'Your Professional plan will renew in 3 days for $49/month.'"
+    },
+    "trial_ending_alerts": {
+      "type": "boolean",
+      "default": true, 
+      "required": true,
+      "description": "Receive alerts when free trial period is ending. Use Case: Prompt users to choose a paid plan before losing access to the service. Example: 'Your free trial ends in 2 days. Choose a plan to continue using Knowledge Bot.'"
+    },
+    "storage_limit_warnings": {
+      "type": "boolean",
+      "default": true,
+      "required": true, 
+      "description": "Receive warnings when approaching or exceeding storage limits. Use Case: Alert users before uploads are blocked due to storage constraints. Example: 'You have used 1.8GB of your 2GB storage limit. Consider upgrading to avoid upload restrictions.'"
+    },
+    "usage_analytics_reports": {
+      "type": "boolean",
+      "default": true,
+      "required": true,
+      "description": "Receive periodic reports about account usage, file uploads, and bot interactions. Use Case: Help users understand their usage patterns and optimize their workflow. Example: 'Your monthly usage report: 145 files uploaded, 2,340 AI interactions this month.'"
+    },
+    "security_notifications": {
+      "type": "boolean", 
+      "default": true,
+      "required": true,
+      "description": "Receive notifications about account security events like login attempts, password changes, and suspicious activity. Use Case: Keep users informed about account security to prevent unauthorized access. Example: 'New login detected from Chrome on Windows in New York, NY.'"
+    },
+    "feature_announcements": {
+      "type": "boolean",
+      "default": false,
+      "required": true,
+      "description": "Receive announcements about new features, product updates, and platform improvements. Use Case: Keep users informed about new capabilities they can use. Example: 'New feature: Advanced AI chat with document context is now available for Professional users.'"
+    },
+    "marketing_communications": {
+      "type": "boolean",
+      "default": false, 
+      "required": true,
+      "description": "Receive marketing emails including promotional offers, company news, and industry insights. Use Case: Optional marketing communications for users who want to stay connected with company updates. Example: 'Special offer: Save 20% on your first year when you upgrade to Enterprise plan.'"
+    },
+    "weekly_digest": {
+      "type": "boolean",
+      "default": true,
+      "required": true,
+      "description": "Receive weekly summary emails with account activity, recent uploads, and usage statistics. Use Case: Regular overview of account activity for users who prefer periodic updates. Example: 'Your weekly digest: 23 files processed, 5 new chat conversations, 89% storage remaining.'"
+    },
+    "system_maintenance_alerts": {
+      "type": "boolean",
+      "default": true,
+      "required": true,
+      "description": "Receive notifications about scheduled maintenance, system updates, and service disruptions. Use Case: Keep users informed about planned downtime and system changes. Example: 'Scheduled maintenance on Sunday 2AM-4AM EST. Service may be temporarily unavailable.'"
     }
   }
 }

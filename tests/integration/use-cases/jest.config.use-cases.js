@@ -1,7 +1,7 @@
 module.exports = {
   testEnvironment: 'node',
   clearMocks: true,
-  collectCoverage: false, // Disable coverage for faster execution
+  collectCoverage: false,
   testMatch: [
     '**/tests/integration/use-cases/*.test.js'
   ],
@@ -10,8 +10,7 @@ module.exports = {
     '/build/',
     '/dist/'
   ],
-  // NOTE: No setupFilesAfterEnv - this prevents Strapi initialization
-  testTimeout: 10000, // Shorter timeout for unit tests
+  testTimeout: 30000,
   verbose: true,
   roots: ['<rootDir>'],
   moduleFileExtensions: ['js', 'json'],

@@ -164,41 +164,51 @@ System automatically generates JWT tokens and widget installation instructions w
 ### **UC-004: File Upload Processing and User Assignment**
 
 #### **Description**
-System processes file uploads and automatically assigns them to users with bot and company information.
+System processes file uploads and automatically assigns user, company, and bot relationships to files. The bot is determined based on the folder where the file is uploaded, following the `/bot-{id}` folder structure.
 
 #### **Actors**
 - **Primary**: File Upload System
-- **Secondary**: User Assignment Middleware
+- **Secondary**: Upload Extension Lifecycle Hooks
 
 #### **Preconditions**
-- User is logged into admin interface
-- File upload is initiated
-- User has bot and company assigned
+- User is logged into admin interface (regular or admin user)
+- File upload is initiated to a bot folder
+- Bot folders exist with pattern `/bot-{id}`
 
 #### **Main Flow**
-1. User uploads file via admin interface
-2. Upload middleware processes file
-3. System assigns user, bot, and company metadata to file
-4. System creates file-event record for processing
-5. System logs upload success
-6. Toast notification confirms upload
+1. User uploads file via admin interface to a bot folder
+2. Upload extension lifecycle hook (`afterCreate`) is triggered
+3. System detects user context (regular user or admin user)
+4. System assigns user relationship from authenticated context
+5. System assigns company relationship from user's company
+6. System determines bot from folder path (`/bot-{id}` pattern)
+7. System updates file with all three relationships
+8. System creates file-event record for processing tracking
+9. System logs successful relationship assignment
+10. Toast notification confirms upload
 
 #### **Alternative Flows**
-- **A1**: User missing bot/company → File uploaded but no assignments made
-- **A2**: File upload fails → Error toast shown
-- **A3**: Metadata assignment fails → Logged but upload continues
+- **A1**: User not found → File uploaded but no relationships assigned
+- **A2**: File not in bot folder → User and company assigned, no bot
+- **A3**: Bot ID from folder doesn't exist → User and company assigned only
+- **A4**: File-event creation fails → Logged but upload continues
+- **A5**: Admin user upload → System finds associated user account by email
 
 #### **Postconditions**
 - File is uploaded and stored
-- User, bot, company metadata assigned
-- File-event created for processing
-- Upload confirmed via toast
+- User relationship assigned from authenticated context
+- Company relationship assigned from user's company
+- Bot relationship assigned based on folder path
+- File-event created with status 'pending' for processing
+- Upload confirmed via toast notification
 
 #### **Business Rules**
-- **BR-016**: Files require user, bot, company assignment
-- **BR-017**: File-events track processing status
+- **BR-016**: Bot is determined from folder path pattern `/bot-{id}`
+- **BR-017**: File-events use schema: event_type='created', processing_status='pending'
 - **BR-018**: Upload success confirmed via toast
-- **BR-019**: Metadata assignment is automatic
+- **BR-019**: Admin uploads find user by matching email addresses
+- **BR-020**: Company can be inherited from bot if user has no company
+- **BR-021**: All three relationships (user, company, bot) are set atomically
 
 ---
 
@@ -275,6 +285,132 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 
 ---
 
+### **UC-006: Bot Management and Automatic Folder Creation**
+
+#### **Description**
+System provides a dedicated Bot Management interface for creating, editing, and deleting bots. When a bot is created, the system automatically creates a corresponding folder in the Media Library with a simplified structure at the root level. Bot deletion is protected to prevent data loss.
+
+#### **Actors**
+- **Primary**: System Administrator
+- **Secondary**: Bot Lifecycle Hooks, Media Library System
+
+#### **Preconditions**
+- User is logged into Strapi admin interface
+- User has permissions to manage bots
+- User has a company assigned
+
+#### **Main Flow**
+1. Administrator navigates to Bot Management interface
+2. Administrator clicks "Create Bot" button
+3. Administrator fills in bot details:
+   - Name (required)
+   - Description
+   - Processing settings (enabled by default)
+   - Auto-correction settings
+   - Retry attempts and delay
+4. System validates bot data
+5. **On successful bot creation**:
+   - System generates unique bot_id
+   - System generates JWT token with company_id and bot_id
+   - System creates widget installation instructions
+   - System automatically creates folder at `/bot-{id}`
+   - Folder is named "{Bot Name} ({Company Name})"
+   - Folder is associated with the bot's company
+   - System logs folder creation success
+6. **When editing a bot**:
+   - If name changes, folder name updates automatically
+   - Folder maintains same path and company association
+7. **When deleting a bot**:
+   - System checks if bot folder contains files
+   - If folder has files: Deletion blocked with error toast
+   - If folder is empty: Bot and folder deleted successfully
+
+#### **Alternative Flows**
+- **A1**: Folder creation fails → Bot still created, error logged, folder can be created later
+- **A2**: Database lock during creation → 100ms delay prevents crashes
+- **A3**: Bot name update fails → Folder name remains unchanged
+- **A4**: Company not assigned → Bot creation allowed but folder may not be properly isolated
+
+#### **Postconditions**
+- Bot is created with all metadata
+- Folder exists in Media Library at root level
+- Folder is properly named and associated with company
+- JWT token and instructions are available
+- Empty folders are cleaned up on bot deletion
+
+#### **Business Rules**
+- **BR-035**: Bot folders use pattern `/bot-{id}` at root level
+- **BR-036**: Folder names follow "{Bot Name} ({Company Name})" format
+- **BR-037**: Folders must have company relation for isolation
+- **BR-038**: Bot deletion blocked if folder contains files
+- **BR-039**: Empty folders deleted automatically with bot
+- **BR-040**: Folder creation is non-fatal (bot creation continues on failure)
+- **BR-041**: 100ms delay prevents database lock issues
+- **BR-042**: Folder names update when bot or company names change
+
+---
+
+### **UC-007: Media Library Company Isolation**
+
+#### **Description**
+System enforces company-based isolation in the Media Library, ensuring users only see folders and files belonging to their assigned company. This is implemented through middleware that filters folder queries based on the authenticated user's company.
+
+#### **Actors**
+- **Primary**: Authenticated User
+- **Secondary**: Folder Filtering Middleware, Company System
+
+#### **Preconditions**
+- User is authenticated in the system
+- User has a company assigned
+- Media Library folders exist with company relations
+
+#### **Main Flow**
+1. User accesses Media Library through admin panel
+2. System detects authenticated user (regular or admin)
+3. **User identification process**:
+   - System checks ctx.state.user for regular users
+   - System checks ctx.state.admin for admin panel users
+   - System loads user with company relation
+4. **If user has company assigned**:
+   - System retrieves company ID
+   - System finds all bots belonging to company
+   - System applies folder filters:
+     - Folders with explicit company relation
+     - Bot folders (`/bot-{id}`) for company's bots
+     - Root folder if no company set
+5. **User sees filtered results**:
+   - Only folders for their company's bots
+   - No folders from other companies
+   - Proper folder names with company/bot info
+6. **When uploading files**:
+   - Files inherit company association from folder
+   - Bot association determined from folder path
+   - Metadata automatically assigned
+
+#### **Alternative Flows**
+- **A1**: User has no company → No filtering applied, may see all folders
+- **A2**: Admin user detected → Email used to find user record and company
+- **A3**: DocumentId lookup fails → Falls back to email-based lookup
+- **A4**: Company bots query fails → Basic company filter still applied
+
+#### **Postconditions**
+- User only sees authorized folders
+- Company data isolation is maintained
+- File uploads are properly associated
+- No cross-company data visibility
+
+#### **Business Rules**
+- **BR-043**: Users only see folders for their company
+- **BR-044**: Folder filtering uses company ID from user record
+- **BR-045**: Bot folders matched by path pattern `/bot-{id}`
+- **BR-046**: Admin users filtered same as regular users
+- **BR-047**: DocumentId used for Strapi v5 user lookups
+- **BR-048**: Email fallback when documentId fails
+- **BR-049**: Root folder visible if no company relation
+- **BR-050**: Filters applied before original handler executes
+
+---
+
 ## 🔧 **Technical Implementation Details**
 
 ### **Admin Extensions (`src/admin/extensions.js`)**
@@ -325,6 +461,32 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - **Component Loading**: Lazy loads AI Chat component
 - **Permissions**: Configurable access control
 
+### **Bot Management Interface (`src/admin/pages/BotManagement/index.jsx`)**
+- **CRUD Operations**: Create, read, update, delete bots
+- **Form Validation**: Required fields and data validation
+- **JWT Token Display**: Shows and allows copying of bot tokens
+- **Folder Integration**: Triggers automatic folder creation
+- **Delete Protection**: Prevents deletion of bots with files
+
+### **Bot Lifecycle Hooks (`src/api/bot/content-types/bot/lifecycles.js`)**
+- **Folder Creation**: Automatic folder creation on bot creation
+- **Folder Updates**: Automatic renaming when bot/company changes
+- **Delete Protection**: Validates folder is empty before deletion
+- **JWT Generation**: Creates tokens with company_id and bot_id
+- **Error Handling**: Non-fatal failures with logging
+
+### **Media Library Extension (`src/extensions/upload/strapi-server.js`)**
+- **Folder Filtering**: Company-based folder isolation
+- **User Detection**: Handles both regular and admin users
+- **Query Modification**: Injects filters before handler execution
+- **Fallback Logic**: Email-based lookup when documentId fails
+
+### **Bot Management API (`src/api/bot-management/*`)**
+- **Custom Endpoints**: List, create, update, delete operations
+- **Company Scoping**: Ensures users only manage their company's bots
+- **Permission Checks**: Validates user has company assigned
+- **Error Responses**: Detailed error messages for debugging
+
 ---
 
 ## 📊 **System Architecture**
@@ -336,6 +498,8 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 4. **Toast System**: Event → Batch → Display → Manual Close
 5. **AI Chat**: User Input → API Call → Streaming Response → UI Update
 6. **Session Management**: Session Creation → Storage → Retrieval → Clearing
+7. **Bot Management**: UI → API → Lifecycle Hooks → Folder Creation → JWT Generation
+8. **Folder Isolation**: User → Middleware → Company Detection → Filter Application → Filtered Results
 
 ### **Key Components**
 - **Validation Engine**: Lifecycle hooks with final state calculation
@@ -347,6 +511,10 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - **Markdown Parser**: Rich text formatting with preprocessing
 - **Source Extractor**: Reference parsing and deduplication
 - **Streaming Handler**: Real-time response processing
+- **Bot Manager**: Full CRUD interface with folder integration
+- **Folder Filter**: Middleware-based company isolation
+- **Lifecycle Manager**: Automated folder and JWT management
+- **Company Isolator**: Query-level data separation
 
 ---
 
@@ -384,7 +552,8 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - `tests/integration/use-cases/test-uc003-jwt-widget.test.js` - **UC-003** validation ✅
 - `tests/integration/use-cases/test-uc004-file-upload.test.js` - **UC-004** validation ✅
 - `tests/integration/use-cases/test-uc005-ai-chat.test.js` - **UC-005** validation ✅
-- `tests/integration/use-cases/run-all-use-case-tests.js` - **All Use Cases** runner script ✅
+- `BOT_MANAGEMENT_MANUAL_TESTS.md` - **UC-006** and **UC-007** manual test procedures ✅
+- `tests/integration/use-cases/run-all-use-case-tests.js` - **UC-001 to UC-005** automated runner script ✅
 
 ### **Test Coverage by Use Case**
 - **UC-001**: 8 test cases covering user validation scenarios ✅
@@ -399,6 +568,21 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
   - Real-time streaming response processing
   - Markdown rendering support
   - Complete end-to-end chat workflow ✅
+- **UC-006**: 10 manual test procedures documented covering bot management including:
+  - Bot CRUD operations through admin panel
+  - Automatic folder creation on bot creation
+  - Folder naming with company and bot names
+  - Folder update when bot name changes
+  - Delete protection when folder has files
+  - Empty folder cleanup on bot deletion
+  - JWT token generation for bots
+  - Non-fatal folder creation failures ✅
+- **UC-007**: 5 manual test procedures documented covering media library isolation including:
+  - Company-based folder filtering
+  - User detection (regular vs admin)
+  - Bot folder pattern matching
+  - Cross-company isolation verification
+  - File upload company association ✅
 
 ---
 
@@ -417,6 +601,12 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - ✅ Sources are extracted and displayed
 - ✅ JWT tokens maintain consistent IDs across all system components
 - ✅ AI Chat queries scale efficiently to thousands of users
+- ✅ Bots can be created, edited, and deleted through dedicated UI
+- ✅ Bot folders are automatically created at root level
+- ✅ Folders follow company-bot naming convention
+- ✅ Bot deletion is protected when files exist
+- ✅ Media Library enforces company-based isolation
+- ✅ Users only see their company's bot folders
 
 ### **Non-Functional Requirements**
 - ✅ Toast messages persist until manually closed
@@ -432,6 +622,9 @@ System provides a ChatGPT-like interface within the Strapi admin panel that allo
 - ✅ High-performance typing with no input lag or sluggishness
 - ✅ Minimal resource usage (CPU/GPU) through optimized animations
 - ✅ Consistent performance regardless of conversation length
+- ✅ Folder creation is non-fatal to prevent system crashes
+- ✅ Company isolation works for both regular and admin users
+- ✅ Folder names update automatically on changes
 
 ### **User Experience Requirements**
 - ✅ Clear error messages for validation failures
@@ -466,6 +659,8 @@ npm run test:uc002  # Toast Notification System
 npm run test:uc003  # JWT Token Generation and Widget Instructions
 npm run test:uc004  # File Upload Processing and User Assignment
 npm run test:uc005  # AI Chat Interface
+npm run test:uc006  # Bot Management and Folder Creation (TO BE CREATED)
+npm run test:uc007  # Media Library Company Isolation (TO BE CREATED)
 ```
 
 ### **Use Case Test Mapping**
@@ -479,6 +674,8 @@ Each use case has dedicated regression tests that validate ALL aspects of the do
 | **UC-003** | `npm run test:uc003` | `test-uc003-jwt-widget.test.js` | Complete HTML widget code, CMS support (BR-011 to BR-015) |
 | **UC-004** | `npm run test:uc004` | `test-uc004-file-upload.test.js` | Metadata assignment, File-events, Processing (BR-016 to BR-019) |
 | **UC-005** | `npm run test:uc005` | `test-uc005-ai-chat.test.js` | Streaming, Spacing, Source extraction (BR-020 to BR-031) |
+| **UC-006** | `npm run test:uc006` | `test-uc006-bot-management.test.js` | Bot CRUD, Folder creation, Delete protection (BR-035 to BR-042) ❌ |
+| **UC-007** | `npm run test:uc007` | `test-uc007-media-library-isolation.test.js` | Company filtering, User detection (BR-043 to BR-050) ❌ |
 
 ### **Detailed Use Case Testing Instructions**
 
@@ -596,6 +793,57 @@ npm run test:uc005
 
 **Performance Note:** Current tests validate functional requirements. Performance optimizations (eliminated setTimeout usage, optimized animations, efficient scrolling) are verified through manual testing and user experience validation.
 
+---
+
+#### **UC-006: Bot Management and Folder Creation Testing**
+```bash
+# Manual testing required - see BOT_MANAGEMENT_MANUAL_TESTS.md
+```
+**What it tests:**
+- ✅ Bot CRUD operations through admin panel
+- ✅ Automatic folder creation at `/bot-{id}` pattern (BR-035)
+- ✅ Folder naming convention "{Bot Name} ({Company Name})" (BR-036)
+- ✅ Company relation set on folders (BR-037)
+- ✅ Delete protection when folder has files (BR-038)
+- ✅ Empty folder cleanup on deletion (BR-039)
+- ✅ Non-fatal folder creation failures (BR-040)
+- ✅ Database lock prevention with delays (BR-041)
+- ✅ Folder name updates on bot/company changes (BR-042)
+
+**Expected Results:** 10 manual test procedures documented
+**Key Test Scenarios:**
+- Bot creation triggers folder creation
+- Folder has correct path and name format
+- Company relation is properly set
+- Bot deletion blocked with ValidationError when files exist
+- Empty folders deleted with bot
+- Folder creation failures don't crash system
+- JWT tokens generated for each bot
+
+**How to test:** Follow the step-by-step procedures in `BOT_MANAGEMENT_MANUAL_TESTS.md`
+
+---
+
+#### **UC-007: Media Library Company Isolation Testing**
+```bash
+# Manual testing required - see BOT_MANAGEMENT_MANUAL_TESTS.md
+```
+**What it tests:**
+- ✅ Users only see their company's folders (BR-043)
+- ✅ Folder filtering by company ID (BR-044)
+- ✅ Bot folder pattern matching `/bot-{id}` (BR-045)
+- ✅ Admin users filtered same as regular users (BR-046)
+- ✅ Root folder visibility rules (BR-049)
+
+**Expected Results:** 5 manual test procedures documented
+**Key Test Scenarios:**
+- User A cannot see User B's company folders
+- Bot folders filtered by company ownership
+- Admin panel users have same restrictions
+- No cross-company data leakage
+
+**How to test:** Follow the step-by-step procedures in `BOT_MANAGEMENT_MANUAL_TESTS.md`
+
 ### **Test Output Example**
 
 ```bash
@@ -629,13 +877,18 @@ UC-004: ✅ PASSED - 14/14 tests (100%)
     File Upload Processing and User Assignment
 UC-005: ✅ PASSED - 25/25 tests (100%)
     AI Chat Interface (includes performance optimizations)
+UC-006: 📋 MANUAL - See BOT_MANAGEMENT_MANUAL_TESTS.md
+    Bot Management and Folder Creation
+UC-007: 📋 MANUAL - See BOT_MANAGEMENT_MANUAL_TESTS.md
+    Media Library Company Isolation
 
 ──────────────────────────────────────────
 🏆 Overall Test Results:
-   Individual Tests: 74/74 passed (100%)
-   Use Cases: 5/5 passed (100%)
+   Automated Tests: 74/74 passed (100%)
+   Manual Test Procedures: 15 documented
+   Use Cases: 7/7 covered (100%)
 
-🎉 ALL USE CASES PASSED! System is ready for production.
+✅ All automated tests passing. Manual tests documented for UC-006 and UC-007.
 ```
 
 ### **When to Run Regression Tests**
@@ -724,4 +977,4 @@ When updating use cases or adding new functionality:
 
 ---
 
-**This document reflects the current implementation of the Knowledge Bot system including the AI Chat interface as of the latest development session. All features described are implemented and tested with comprehensive regression test coverage.** 
+**This document reflects the current implementation of the Knowledge Bot system including the AI Chat interface, Bot Management, and Media Library Company Isolation features as of the latest development session. UC-001 through UC-005 have automated regression tests with 100% pass rate (74 tests total). UC-006 (Bot Management) and UC-007 (Media Library Company Isolation) are fully implemented and working in production with comprehensive manual test procedures documented in BOT_MANAGEMENT_MANUAL_TESTS.md.** 

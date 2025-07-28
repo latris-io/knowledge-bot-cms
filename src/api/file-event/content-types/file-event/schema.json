@@ -5,7 +5,7 @@
     "singularName": "file-event",
     "pluralName": "file-events",
     "displayName": "File Event",
-    "description": ""
+    "description": "Tracks file upload and processing events"
   },
   "options": {
     "draftAndPublish": false
@@ -16,7 +16,8 @@
       "enum": [
         "created",
         "updated",
-        "deleted"
+        "deleted",
+        "retry"
       ],
       "required": true
     },
@@ -25,19 +26,69 @@
       "default": false
     },
     "file_document_id": {
-      "type": "string"
+      "type": "string",
+      "required": true
     },
     "bot_id": {
-      "type": "integer"
+      "type": "integer",
+      "required": true
     },
     "company_id": {
-      "type": "integer"
+      "type": "integer",
+      "required": true
     },
     "user_id": {
-      "type": "integer"
+      "type": "integer",
+      "required": true
     },
     "file_name": {
       "type": "string"
+    },
+    "file_type": {
+      "type": "string"
+    },
+    "file_size": {
+      "type": "biginteger"
+    },
+    "batch_id": {
+      "type": "string"
+    },
+    "processing_status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "queued",
+        "processing",
+        "completed",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "processing_started_at": {
+      "type": "datetime"
+    },
+    "processing_completed_at": {
+      "type": "datetime"
+    },
+    "retry_attempt": {
+      "type": "integer",
+      "default": 0
+    },
+    "original_event_type": {
+      "type": "string"
+    },
+    "error_message": {
+      "type": "text"
+    },
+    "error_details": {
+      "type": "json"
+    },
+    "chunks_created": {
+      "type": "integer",
+      "default": 0
+    },
+    "processing_time_seconds": {
+      "type": "integer"
     }
   }
 }
