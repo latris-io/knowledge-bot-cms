@@ -193,6 +193,124 @@ module.exports = (plugin) => {
       } catch (error) {
         console.error('❌ Error in file afterCreate lifecycle:', error);
       }
+    },
+
+    async afterUpdate(event) {
+      const { result, params } = event;
+      
+      console.log('📝 [FILE LIFECYCLE] afterUpdate triggered for file:', result.name);
+      
+      try {
+        // Only create update event if file has a bot assigned
+        if (result.bot) {
+          // Get user info from context
+          let userId = null;
+          try {
+            const ctx = strapi.requestContext?.get?.();
+            if (ctx?.state?.user) {
+              userId = ctx.state.user.id;
+            } else if (ctx?.state?.auth?.credentials) {
+              const adminEmail = ctx.state.auth.credentials.email;
+              const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+                filters: { email: adminEmail },
+                limit: 1
+              });
+              if (users && users.length > 0) {
+                userId = users[0].id;
+              }
+            }
+          } catch (error) {
+            console.log('⚠️ Could not get user context for update:', error.message);
+          }
+
+          // Create update event
+          try {
+            const fileSizeInBytes = Math.round((result.size || 0) * 1024);
+            
+            await strapi.entityService.create('api::file-event.file-event', {
+              data: {
+                file_document_id: result.documentId || result.id.toString(),
+                file_name: result.name,
+                file_type: result.mime,
+                file_size: fileSizeInBytes,
+                event_type: 'updated',
+                processing_status: 'pending',
+                user_id: userId,
+                bot_id: result.bot.id || result.bot,
+                company_id: result.company?.id || result.company,
+                publishedAt: new Date().toISOString(),
+              }
+            });
+            console.log(`✅ Update event created for file ${result.name}`);
+          } catch (error) {
+            console.error('❌ Error creating update event:', error);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error in file afterUpdate lifecycle:', error);
+      }
+    },
+
+    async beforeDelete(event) {
+      const { params } = event;
+      
+      console.log('🗑️ [FILE LIFECYCLE] beforeDelete triggered for file ID:', params.where.id);
+      
+      try {
+        // Get the file details before deletion
+        const file = await strapi.entityService.findOne('plugin::upload.file', params.where.id, {
+          populate: ['bot', 'company', 'user']
+        });
+        
+        if (file && file.bot) {
+          // Get user info from context
+          let userId = file.user?.id;
+          if (!userId) {
+            try {
+              const ctx = strapi.requestContext?.get?.();
+              if (ctx?.state?.user) {
+                userId = ctx.state.user.id;
+              } else if (ctx?.state?.auth?.credentials) {
+                const adminEmail = ctx.state.auth.credentials.email;
+                const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+                  filters: { email: adminEmail },
+                  limit: 1
+                });
+                if (users && users.length > 0) {
+                  userId = users[0].id;
+                }
+              }
+            } catch (error) {
+              console.log('⚠️ Could not get user context for deletion:', error.message);
+            }
+          }
+
+          // Create deletion event
+          try {
+            const fileSizeInBytes = Math.round((file.size || 0) * 1024);
+            
+            await strapi.entityService.create('api::file-event.file-event', {
+              data: {
+                file_document_id: file.documentId || file.id.toString(),
+                file_name: file.name,
+                file_type: file.mime,
+                file_size: fileSizeInBytes,
+                event_type: 'deleted',
+                processing_status: 'completed', // Deletion is immediate
+                user_id: userId,
+                bot_id: file.bot.id || file.bot,
+                company_id: file.company?.id || file.company,
+                publishedAt: new Date().toISOString(),
+              }
+            });
+            console.log(`✅ Deletion event created for file ${file.name}`);
+          } catch (error) {
+            console.error('❌ Error creating deletion event:', error);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error in file beforeDelete lifecycle:', error);
+      }
     }
   };
   
@@ -362,4 +480,4 @@ module.exports = (plugin) => {
   // the global middleware that handles all folder-related filtering
 
   return plugin;
-}; 
+};
