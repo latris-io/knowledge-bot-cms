@@ -163,31 +163,8 @@ module.exports = (plugin) => {
           });
           console.log(`✅ File relations updated successfully`);
           
-          // Create file event if bot is assigned
-          if (updateData.bot) {
-            try {
-              // Convert file size from KB to bytes and ensure it's an integer
-              const fileSizeInBytes = Math.round((result.size || 0) * 1024);
-              
-              await strapi.entityService.create('api::file-event.file-event', {
-                data: {
-                  file_document_id: result.documentId || result.id.toString(),
-                  file_name: result.name,
-                  file_type: result.mime,
-                  file_size: fileSizeInBytes,
-                  event_type: 'created',
-                  processing_status: 'pending',
-                  user_id: updateData.user,
-                  bot_id: updateData.bot,
-                  company_id: updateData.company,
-                  publishedAt: new Date().toISOString(), // Ensure publishedAt is set
-                }
-              });
-              console.log(`✅ File event created for file ${result.name}`);
-            } catch (fileEventError) {
-              console.error('❌ Error creating file event:', fileEventError);
-            }
-          }
+          // File event creation is handled in the upload service overrides
+          // to properly track both new uploads and replacements
         } else {
           console.log('⚠️ No relations to update for file');
         }
@@ -270,12 +247,20 @@ module.exports = (plugin) => {
   plugin.services.upload.upload = async (params, { user } = {}) => {
     console.log('🎯 Custom upload method called');
     
+    // Check if this is a file replacement
+    const ctx = strapi.requestContext?.get?.();
+    const isReplacement = !!(ctx?.query?.id);
+    
+    if (isReplacement) {
+      console.log('🔄 File replacement detected for ID:', ctx.query.id);
+    }
+    
     // Call original method
     const result = await originalUpload.call(plugin.services.upload, params, { user });
     
     // Process uploaded files
     if (result && Array.isArray(result)) {
-      await processUploadedFiles(result);
+      await processUploadedFiles(result, isReplacement);
     }
     
     return result;
@@ -284,19 +269,27 @@ module.exports = (plugin) => {
   plugin.services.upload.uploadFiles = async (files) => {
     console.log('🎯 Custom uploadFiles method called');
     
+    // Check if this is a file replacement
+    const ctx = strapi.requestContext?.get?.();
+    const isReplacement = !!(ctx?.query?.id);
+    
+    if (isReplacement) {
+      console.log('🔄 File replacement detected for ID:', ctx.query.id);
+    }
+    
     // Call original method
     const result = await originalUploadFiles.call(plugin.services.upload, files);
     
     // Process uploaded files
     if (result && Array.isArray(result)) {
-      await processUploadedFiles(result);
+      await processUploadedFiles(result, isReplacement);
     }
     
     return result;
   };
   
   // Helper function to process uploaded files
-  async function processUploadedFiles(files) {
+  async function processUploadedFiles(files, isReplacement = false) {
     for (const file of files) {
       try {
         console.log(`📎 Processing uploaded file: ${file.name} (ID: ${file.id})`);
@@ -393,25 +386,28 @@ module.exports = (plugin) => {
           // Create file event if bot is assigned
           if (updateData.bot) {
             try {
+              // Convert file size from KB to bytes and ensure it's an integer
+              const fileSizeInBytes = Math.round((file.size || 0) * 1024);
+              
+              // Determine event type based on whether this is a replacement
+              const eventType = isReplacement ? 'updated' : 'created';
+              console.log(`📊 Creating file event (${eventType}) for file ${file.name}`);
+              
               await strapi.entityService.create('api::file-event.file-event', {
                 data: {
-                  file_id: file.id,
+                  file_document_id: file.documentId || file.id.toString(),
                   file_name: file.name,
-                  file_path: file.url,
-                  status: 'uploaded',
-                  event_type: 'upload',
-                  event_timestamp: new Date(),
-                  user: updateData.user,
-                  bot: updateData.bot,
-                  company: updateData.company,
-                  metadata: {
-                    size: file.size,
-                    mime: file.mime,
-                    ext: file.ext
-                  }
+                  file_type: file.mime,
+                  file_size: fileSizeInBytes,
+                  event_type: eventType,
+                  processing_status: 'pending',
+                  user_id: updateData.user,
+                  bot_id: updateData.bot,
+                  company_id: updateData.company,
+                  publishedAt: new Date().toISOString(),
                 }
               });
-              console.log('📊 File event created');
+              console.log(`✅ File event (${eventType}) created for file ${file.name}`);
             } catch (error) {
               console.error('❌ Error creating file event:', error);
             }
