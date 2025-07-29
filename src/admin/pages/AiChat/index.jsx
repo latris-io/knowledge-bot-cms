@@ -303,8 +303,8 @@ const AiChat = () => {
         console.log('🚀 JWT Token Generated - Company ID:', payload.company_id, 'Bot ID:', payload.bot_id);
         
         const token = await createJWT(payload, 'my-ultra-secure-signing-key');
-        setJwtToken(token);
-        
+      setJwtToken(token);
+      
         // Add welcome message on first load
         if (messages.length === 0) {
           setMessages([
@@ -316,12 +316,12 @@ const AiChat = () => {
             }
           ]);
         }
-      } catch (err) {
+    } catch (err) {
         console.error('Error generating JWT:', err);
         setError('Failed to generate authentication token');
-      }
-    };
-    
+    }
+  };
+
     generateToken();
   }, [selectedBotId, user, companyBots]);
 
@@ -766,18 +766,18 @@ const AiChat = () => {
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d30 25%, #1a1a1a 50%, #2d2d30 75%, #1a1a1a 100%)',
         minHeight: '100vh',
-        display: 'flex',
+          display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'column',
         color: '#ffffff'
       }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
+          <div style={{
+            width: '40px',
+            height: '40px',
           border: '3px solid rgba(255, 255, 255, 0.2)',
           borderTop: '3px solid #7877c6',
-          borderRadius: '50%',
+            borderRadius: '50%',
           animation: 'spin 1s linear infinite',
           marginBottom: '16px',
           boxShadow: '0 0 20px rgba(120, 119, 198, 0.5)'
@@ -800,9 +800,9 @@ const AiChat = () => {
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d30 25%, #1a1a1a 50%, #2d2d30 75%, #1a1a1a 100%)',
         minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
         flexDirection: 'column',
         padding: '20px',
         color: '#ffffff'
@@ -819,7 +819,7 @@ const AiChat = () => {
           backdropFilter: 'blur(20px)'
         }}>
           ⚠️ {error}
-        </div>
+          </div>
         <div style={{ 
           color: 'rgba(255, 255, 255, 0.6)', 
           fontSize: '14px',
@@ -839,7 +839,7 @@ const AiChat = () => {
       background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d30 25%, #1a1a1a 50%, #2d2d30 75%, #1a1a1a 100%)',
       minHeight: '100vh',
       overflow: 'hidden',
-      position: 'relative',
+            position: 'relative',
       color: '#ffffff'
     }}>
       {/* Holographic Background Effect */}
@@ -857,7 +857,7 @@ const AiChat = () => {
       }} />
 
       {/* Floating Glass Orbs */}
-      <div style={{
+            <div style={{ 
         position: 'fixed',
         top: 0,
         left: 0,
@@ -902,7 +902,7 @@ const AiChat = () => {
           border: '1px solid rgba(255, 255, 255, 0.1)',
           // Removed continuous animation for performance
         }} />
-      </div>
+            </div>
       {/* Main Container - Glassmorphism */}
       <div style={{
         flex: 1,
@@ -941,7 +941,7 @@ const AiChat = () => {
         
         {/* Holographic Bottom Border */}
         <div style={{
-          position: 'absolute',
+                position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
@@ -956,15 +956,15 @@ const AiChat = () => {
         }} />
 
         {/* Glassmorphism Header */}
-        <div style={{
+          <div style={{
           padding: '32px 48px',
           background: 'rgba(0, 0, 0, 0.2)',
           backdropFilter: 'blur(60px) brightness(1.2)',
           borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           position: 'relative',
           overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
+            display: 'flex',
+            alignItems: 'center',
           justifyContent: 'space-between'
         }}>
           <div style={{ flex: 1 }}>
@@ -992,7 +992,7 @@ const AiChat = () => {
                         
             <div style={{
               display: 'flex',
-              justifyContent: 'center',
+            justifyContent: 'center',
               alignItems: 'center',
               gap: '12px',
               marginTop: '16px'
@@ -1011,16 +1011,16 @@ const AiChat = () => {
                 fontWeight: '500'
               }}>
                 {jwtToken ? 'Connected' : 'Connecting...'}
-              </div>
-            </div>
-            
+          </div>
+      </div>
+
             {/* Bot Selector - Glassmorphism Style */}
             {companyBots.length > 0 && (
-              <div style={{
+      <div style={{ 
                 marginTop: '16px',
-                display: 'flex',
+        display: 'flex',
                 justifyContent: 'center',
-                alignItems: 'center',
+        alignItems: 'center',
                 gap: '12px'
               }}>
                 <label style={{
@@ -1037,7 +1037,7 @@ const AiChat = () => {
                     background: 'rgba(255, 255, 255, 0.1)',
                     color: 'rgba(255, 255, 255, 0.9)',
                     border: '1px solid rgba(255, 255, 255, 0.2)',
-                    borderRadius: '8px',
+          borderRadius: '8px',
                     padding: '6px 12px',
                     fontSize: '12px',
                     fontWeight: '500',
@@ -1065,14 +1065,14 @@ const AiChat = () => {
                     </option>
                   ))}
                 </select>
-              </div>
+        </div>
             )}
           </div>
             
           {/* Debug Toggle - Glassmorphism Style */}
-          <button
+        <button 
             onClick={() => setDebugMode(!debugMode)}
-            style={{
+          style={{
               background: debugMode ? 'linear-gradient(135deg, #7877c6 0%, #ff2d55 100%)' : 'rgba(255, 255, 255, 0.1)',
               color: debugMode ? 'white' : 'rgba(255, 255, 255, 0.6)',
               border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -1088,16 +1088,16 @@ const AiChat = () => {
             }}
           >
             {debugMode ? '🔍 RAW' : '🎨 FORMATTED'}
-          </button>
-          </div>
+        </button>
+      </div>
 
         {/* Chat Area - Glassmorphism */}
-        <div style={{
+    <div style={{
           flex: 1,
           padding: '48px',
           overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
+      display: 'flex',
+      flexDirection: 'column',
           gap: '32px',
           position: 'relative',
           background: 'rgba(255, 255, 255, 0.02)',
@@ -1116,14 +1116,14 @@ const AiChat = () => {
               }}
             >
               {/* Avatar - Glassmorphism */}
-              <div style={{
+      <div style={{
                 width: '48px',
                 height: '48px',
                 borderRadius: '24px',
                 background: message.role === 'user' 
                   ? 'linear-gradient(135deg, #34c759 0%, #30d158 100%)'
                   : 'linear-gradient(135deg, #7877c6 0%, #ff2d55 100%)',
-                display: 'flex',
+        display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: 'white',
@@ -1149,10 +1149,10 @@ const AiChat = () => {
                   // Removed continuous avatar shine for performance
                 }} />
                 {message.role === 'user' ? 'U' : 'AI'}
-              </div>
+      </div>
 
               {/* Message Content - Glassmorphism */}
-              <div style={{
+      <div style={{
                 background: message.role === 'user'
                   ? 'rgba(120, 119, 198, 0.12)'
                   : 'rgba(255, 255, 255, 0.08)',
@@ -1173,7 +1173,7 @@ const AiChat = () => {
               }}>
 
                 {message.isLoading ? (
-                  <div style={{
+          <div style={{
                     display: 'flex',
                     gap: '4px',
                     padding: '16px 0',
@@ -1203,8 +1203,8 @@ const AiChat = () => {
                       animation: 'typingPulse 1.4s infinite',
                       animationDelay: '0.4s'
                     }} />
-                  </div>
-                                  ) : (
+          </div>
+        ) : (
                     <div style={{
                       fontSize: '16px',
                       lineHeight: '1.6',
@@ -1300,11 +1300,11 @@ const AiChat = () => {
               </div>
             </div>
           ))}
-          <div ref={messagesEndRef} />
-        </div>
+        <div ref={messagesEndRef} />
+      </div>
 
         {/* Input Area - Glassmorphism */}
-        <div style={{
+      <div style={{
           padding: '32px 48px 48px',
           background: 'rgba(0, 0, 0, 0.2)',
           backdropFilter: 'blur(60px) brightness(1.2)',
@@ -1347,18 +1347,18 @@ const AiChat = () => {
             } : {})
           }}>
 
-            <textarea
+          <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => {
                 handleInputChange(e.target.value);
                 resizeTextarea();
               }}
-              onKeyPress={handleKeyPress}
+            onKeyPress={handleKeyPress}
               placeholder="Message AI Assistant..."
               disabled={isLoading || !jwtToken || !user}
-              style={{
-                flex: 1,
+            style={{
+              flex: 1,
                 border: 'none',
                 outline: 'none',
                 background: 'transparent',
@@ -1372,10 +1372,10 @@ const AiChat = () => {
               rows={1}
             />
             
-            <button
+          <button
               onClick={handleSend}
               disabled={isLoading || !input.trim()}
-              style={{
+            style={{
                 background: isLoading || !input.trim() || !jwtToken || !user 
                   ? 'rgba(255, 255, 255, 0.2)' 
                   : 'linear-gradient(135deg, #7877c6 0%, #ff2d55 100%)',
@@ -1388,7 +1388,7 @@ const AiChat = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                color: 'white',
+              color: 'white',
                 boxShadow: isLoading || !input.trim() || !jwtToken || !user
                   ? '0 2px 8px rgba(0, 0, 0, 0.2)'
                   : '0 4px 12px rgba(120, 119, 198, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
@@ -1438,9 +1438,9 @@ const AiChat = () => {
                   <path d="M22 2 11 13"/>
                 </svg>
               )}
-            </button>
-          </div>
+          </button>
         </div>
+          </div>
       </div>
 
       {/* Glassmorphism CSS Animations */}
