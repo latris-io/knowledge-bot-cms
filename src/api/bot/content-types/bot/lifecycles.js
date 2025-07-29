@@ -14,90 +14,9 @@ module.exports = {
     console.log('🎯 [BOT LIFECYCLE] beforeCreate triggered!');
     console.log('📦 [BOT LIFECYCLE] Event data:', JSON.stringify(event.params.data, null, 2));
     
-    const { data } = event.params;
-    
-    // Generate a unique bot_id if not provided
-    if (!data.bot_id) {
-      data.bot_id = `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      console.log('🆔 [BOT LIFECYCLE] Generated bot_id:', data.bot_id);
-    }
-    
-    // Extract company ID (handle different formats)
-    let companyId;
-    if (typeof data.company === 'object' && data.company.set && data.company.set[0]) {
-      companyId = data.company.set[0].id;
-      console.log('📍 [BOT LIFECYCLE] Company ID from set format:', companyId);
-    } else if (typeof data.company === 'object' && data.company.connect && data.company.connect[0]) {
-      companyId = data.company.connect[0].id;
-      console.log('📍 [BOT LIFECYCLE] Company ID from connect format:', companyId);
-    } else if (typeof data.company === 'object' && data.company.id) {
-      companyId = data.company.id;
-      console.log('📍 [BOT LIFECYCLE] Company ID from object.id:', companyId);
-    } else if (typeof data.company === 'number' || typeof data.company === 'string') {
-      companyId = data.company;
-      console.log('📍 [BOT LIFECYCLE] Company ID from direct value:', companyId);
-    }
-    
-    // Generate JWT token if we have a company
-    if (companyId) {
-      console.log('🔐 [BOT LIFECYCLE] Creating JWT with payload:', { company_id: companyId, bot_id: data.bot_id });
-      
-      try {
-        // Generate JWT token with company_id and bot_id
-        const token = jwt.sign(
-          { 
-            company_id: companyId,
-          bot_id: data.bot_id
-          },
-          JWT_SECRET,
-          { algorithm: 'HS256' }
-        );
-        
-        console.log('✅ [BOT LIFECYCLE] JWT token generated successfully');
-        console.log('🔐 [BOT LIFECYCLE] Token preview:', token.substring(0, 50) + '...');
-        
-        // Create widget installation instructions
-        const instructions = `
-<!-- Knowledge Bot Widget Installation -->
-<!-- Place this code just before the closing </body> tag -->
-
-<!-- Dependencies -->
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/dompurify@2.3.8/dist/purify.min.js"></script>
-
-<!-- Widget Script -->
-<script src="https://your-widget-domain.com/widget.js"></script>
-
-<!-- Initialize Widget -->
-<script>
-  KnowledgeBotWidget.init({
-    token: '${token}'
-  });
-</script>
-
-<!-- Widget Trigger Button (optional - widget can also be triggered programmatically) -->
-<button onclick="KnowledgeBotWidget.toggle()">Open Knowledge Bot</button>
-
-<!-- Installation Notes -->
-<!--
-1. Replace 'https://your-widget-domain.com/widget.js' with your actual widget URL
-2. The token is unique to your bot and company - keep it secure
-3. You can customize the trigger button or use KnowledgeBotWidget.open() / .close() programmatically
-4. For Webflow: Add this code to your site's custom code section
-5. For WordPress: Use a plugin like "Insert Headers and Footers" or add to your theme
-6. For other platforms: Add to your site's HTML template before </body>
--->
-`;
-        
-        // Store the JWT token and instructions
-        data.jwt_token = token;
-        data.instructions = instructions;
-        
-        console.log('✅ [BOT LIFECYCLE] beforeCreate completed');
-      } catch (error) {
-        console.error('❌ [BOT LIFECYCLE] Error generating JWT token:', error);
-      }
-    }
+    // Remove custom bot_id generation and JWT creation from beforeCreate
+    // This will be handled in afterCreate where we have the real database ID
+    console.log('✅ [BOT LIFECYCLE] beforeCreate completed (JWT generation moved to afterCreate)');
   },
 
   beforeUpdate(event) {
@@ -156,7 +75,7 @@ module.exports = {
     await new Promise(resolve => setTimeout(resolve, 100));
     
     try {
-      console.log(`🤖 [BOT LIFECYCLE] Creating folder for bot: ${result.name} (ID: ${result.id})`);
+      console.log(`🤖 [BOT LIFECYCLE] Processing bot creation: ${result.name} (ID: ${result.id})`);
       
       // Get the bot with its company relation
       const botWithCompany = await strapi.entityService.findOne('api::bot.bot', result.id, {
@@ -169,6 +88,70 @@ module.exports = {
       }
       
       const company = botWithCompany.company;
+      
+      // Generate JWT token with the real database ID
+      console.log('🔐 [BOT LIFECYCLE] Creating JWT with payload:', { company_id: company.id, bot_id: result.id });
+      
+      try {
+        const token = jwt.sign(
+          { 
+            company_id: company.id,
+            bot_id: result.id  // Use the real database ID
+          },
+          JWT_SECRET,
+          { algorithm: 'HS256' }
+        );
+        
+        console.log('✅ [BOT LIFECYCLE] JWT token generated successfully');
+        console.log('🔐 [BOT LIFECYCLE] Token preview:', token.substring(0, 50) + '...');
+        
+        // Create widget installation instructions
+        const instructions = `
+<!-- Knowledge Bot Widget Installation -->
+<!-- Place this code just before the closing </body> tag -->
+
+<!-- Dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@2.3.8/dist/purify.min.js"></script>
+
+<!-- Widget Script -->
+<script src="https://your-widget-domain.com/widget.js"></script>
+
+<!-- Initialize Widget -->
+<script>
+  KnowledgeBotWidget.init({
+    token: '${token}'
+  });
+</script>
+
+<!-- Widget Trigger Button (optional - widget can also be triggered programmatically) -->
+<button onclick="KnowledgeBotWidget.toggle()">Open Knowledge Bot</button>
+
+<!-- Installation Notes -->
+<!--
+1. Replace 'https://your-widget-domain.com/widget.js' with your actual widget URL
+2. The token is unique to your bot and company - keep it secure
+3. You can customize the trigger button or use KnowledgeBotWidget.open() / .close() programmatically
+4. For Webflow: Add this code to your site's custom code section
+5. For WordPress: Use a plugin like "Insert Headers and Footers" or add to your theme
+6. For other platforms: Add to your site's HTML template before </body>
+-->
+`;
+        
+        // Update the bot with JWT token and instructions
+        await strapi.entityService.update('api::bot.bot', result.id, {
+          data: {
+            jwt_token: token,
+            instructions: instructions
+          }
+        });
+        
+        console.log('✅ [BOT LIFECYCLE] Bot updated with JWT token and instructions');
+      } catch (tokenError) {
+        console.error('❌ [BOT LIFECYCLE] Error generating JWT token:', tokenError);
+      }
+      
+      // Create folder (existing logic)
       const botFolderPath = `/bot-${result.id}`;
       const botFolderName = `${result.name} (${company.name})`;
       
