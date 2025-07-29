@@ -28,6 +28,15 @@ WIDGET_JWT_SECRET=my-ultra-secure-signing-key
 ENABLE_USER_VALIDATION=true
 ENABLE_TOAST_NOTIFICATIONS=true
 
+# Email Configuration (for user verification emails)
+DEFAULT_FROM_EMAIL=noreply@yourdomain.com
+DEFAULT_REPLY_TO_EMAIL=noreply@yourdomain.com
+# For production, add SMTP settings:
+# SMTP_HOST=smtp.yourmailprovider.com
+# SMTP_PORT=587
+# SMTP_USERNAME=your-smtp-username
+# SMTP_PASSWORD=your-smtp-password
+
 # File Upload Configuration
 UPLOAD_PROVIDER=aws-s3
 AWS_ACCESS_KEY_ID=your-aws-access-key

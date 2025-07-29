@@ -68,6 +68,130 @@ module.exports = (config, { strapi }) => {
       }
     }
 
+    // Handle email confirmation
+    if (ctx.request.url.startsWith('/api/auth/email-confirmation')) {
+      const urlParams = new URLSearchParams(ctx.request.url.split('?')[1]);
+      const confirmationToken = urlParams.get('confirmation');
+
+      if (!confirmationToken) {
+        ctx.status = 400;
+        ctx.body = `
+          <html>
+            <head><title>Verification Failed</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2 style="color: #d02b20;">❌ Email Verification Failed</h2>
+              <p>Missing confirmation token.</p>
+              <p><a href="/admin/auth/login">Return to Login</a></p>
+            </body>
+          </html>
+        `;
+        return;
+      }
+
+      try {
+        // Find user with this confirmation token
+        const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+          filters: {
+            confirmationToken: confirmationToken,
+            confirmed: false
+          }
+        });
+
+        if (!users || users.length === 0) {
+          ctx.status = 400;
+          ctx.body = `
+            <html>
+              <head><title>Verification Failed</title></head>
+              <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+                <h2 style="color: #d02b20;">❌ Email Verification Failed</h2>
+                <p>The verification link is invalid or has already been used.</p>
+                <p><a href="/admin/auth/login">Return to Login</a></p>
+              </body>
+            </html>
+          `;
+          return;
+        }
+
+        // Update user to confirmed
+        await strapi.entityService.update('plugin::users-permissions.user', users[0].id, {
+          data: {
+            confirmed: true,
+            confirmationToken: null
+          }
+        });
+
+        console.log(`✅ Email verified for user: ${users[0].email}`);
+
+        // Also activate the corresponding admin user
+        try {
+          const userEmail = users[0].email;
+          const baseEmail = userEmail.split('@')[0];
+          const domain = userEmail.split('@')[1];
+          
+          // Find admin user - could be the exact email or with +admin suffix
+          const adminUsers = await strapi.documents('admin::user').findMany({
+            filters: { 
+              $or: [
+                { email: userEmail }, // Try exact match first
+                { email: { $startsWith: `${baseEmail}+admin` } } // Try with +admin suffix
+              ]
+            }
+          });
+
+          if (adminUsers && adminUsers.length > 0) {
+            await strapi.documents('admin::user').update({
+              documentId: adminUsers[0].documentId,
+              data: {
+                isActive: true
+              }
+            });
+            console.log(`✅ Admin user activated: ${adminUsers[0].email} (for user: ${userEmail})`);
+          } else {
+            console.log(`⚠️ No admin user found to activate for: ${userEmail}`);
+          }
+        } catch (adminActivationError) {
+          console.error('⚠️ Failed to activate admin user:', adminActivationError.message);
+          // Don't fail the email verification if admin activation fails
+        }
+
+        // Return success page
+        ctx.status = 200;
+        ctx.body = `
+          <html>
+            <head><title>Email Verified</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2 style="color: #28a745;">✅ Email Verified Successfully!</h2>
+              <p>Your email address has been verified. You can now log in to your account.</p>
+              <div style="margin: 30px 0;">
+                <a href="/admin/auth/login" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                  Login to Admin Panel
+                </a>
+              </div>
+              <p style="color: #666; font-size: 14px;">
+                Use your email address and password to log in.
+              </p>
+            </body>
+          </html>
+        `;
+        return;
+
+      } catch (error) {
+        console.error('Error during email confirmation:', error);
+        ctx.status = 500;
+        ctx.body = `
+          <html>
+            <head><title>Verification Error</title></head>
+            <body style="font-family: Arial, sans-serif; text-align: center; padding: 50px;">
+              <h2 style="color: #d02b20;">❌ Verification Error</h2>
+              <p>An error occurred during email verification.</p>
+              <p><a href="/admin/auth/login">Return to Login</a></p>
+            </body>
+          </html>
+        `;
+        return;
+      }
+    }
+
     // Only intercept POST requests to /admin/register-admin
     if (ctx.request.method === 'POST' && ctx.request.url === '/admin/register-admin') {
       console.log('🚀 Intercepting admin registration request');
@@ -178,7 +302,7 @@ module.exports = (config, { strapi }) => {
             password: password, // Pass plain text password - Strapi will hash it
             firstname,
             lastname,
-            isActive: true,
+            isActive: false,  // Admin user is inactive until email verification
             roles: [adminRole[0].documentId]
           };
 
@@ -272,14 +396,19 @@ module.exports = (config, { strapi }) => {
                 }
                 
                 // Create the users-permissions user with company
+                // Generate confirmation token for email verification
+                const crypto = require('crypto');
+                const confirmationToken = crypto.randomBytes(32).toString('hex');
+                
                 // Using entityService for plugin content types
                 const userData = {
                   username,
                   email,
                   password,
                   provider: 'local',  // Required field for users-permissions
-                  confirmed: true,
+                  confirmed: false,  // User must verify email first
                   blocked: false,
+                  confirmationToken: confirmationToken,  // Store verification token
                   role: authenticatedRole[0].id,  // Use id for entityService
                   company: companyDbId,  // Use the database ID
                   // Add required notification fields with default values
@@ -302,6 +431,122 @@ module.exports = (config, { strapi }) => {
                 });
 
                 console.log(`✅ Created users-permissions user:`, JSON.stringify(contentUser, null, 2));
+                
+                // Send verification email (non-blocking)
+                const sendVerificationEmail = async () => {
+                  try {
+                    console.log('📧 Sending verification email...');
+                    const verificationUrl = `${strapi.config.get('server.url', 'http://localhost:1337')}/api/auth/email-confirmation`;
+                    
+                    // For development, just log the verification link instead of sending email
+                    if (process.env.NODE_ENV !== 'production') {
+                      console.log(`\n🎉 ========== ACCOUNT CREATED SUCCESSFULLY ==========`);
+                      console.log(`📧 Email: ${email}`);
+                      console.log(`🔐 Password: ${password}`);
+                      console.log(`🏢 Company: ${company.name}`);
+                      console.log(`🔗 VERIFICATION LINK: ${verificationUrl}?confirmation=${confirmationToken}`);
+                      console.log(`\n🚀 NEXT STEPS:`);
+                      console.log(`1. Click the verification link above`);
+                      console.log(`2. Go to: http://localhost:1337/admin/auth/login`);
+                      console.log(`3. Login with email: ${email}`);
+                      console.log(`4. Enter password: ${password}`);
+                      console.log(`⚠️  IMPORTANT: Use your EMAIL ADDRESS (not username) to log in!`);
+                      console.log(`================================================\n`);
+                      return;
+                    }
+                    
+                    await strapi.plugins['email'].services.email.send({
+                      to: email,
+                      from: strapi.config.get('plugins.email.settings.defaultFrom', 'noreply@localhost'),
+                      subject: 'Welcome to Knowledge Bot - Account Created & Email Verification',
+                      html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                          <h2 style="color: #333;">🎉 Welcome to Knowledge Bot!</h2>
+                          <p>Your account has been created successfully! Here are your account details:</p>
+                          
+                          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                            <h3 style="color: #495057; margin-top: 0;">📋 Your Account Information</h3>
+                            <p><strong>Email:</strong> ${email}</p>
+                            <p><strong>Password:</strong> ${password}</p>
+                            <p><strong>Company:</strong> ${company.name}</p>
+                            <p style="color: #6c757d; font-size: 14px; margin-bottom: 0;">
+                              ⚠️ <strong>Important:</strong> Use your <strong>EMAIL ADDRESS</strong> (not username) to log in!
+                            </p>
+                          </div>
+                          
+                          <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin: 20px 0;">
+                            <h4 style="color: #856404; margin-top: 0;">🔐 Email Verification Required</h4>
+                            <p style="color: #856404; margin-bottom: 0;">You must verify your email address before you can log in. Click the button below:</p>
+                          </div>
+                          
+                          <div style="text-align: center; margin: 30px 0;">
+                            <a href="${verificationUrl}?confirmation=${confirmationToken}" 
+                               style="background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                              ✅ Verify Email & Activate Account
+                            </a>
+                          </div>
+                          
+                          <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <h4 style="color: #1976d2; margin-top: 0;">🚀 Next Steps</h4>
+                            <ol style="color: #1976d2;">
+                              <li>Click the verification button above</li>
+                              <li>Go to <a href="http://localhost:1337/admin/auth/login" style="color: #1976d2;">http://localhost:1337/admin/auth/login</a></li>
+                              <li>Login with your email: <strong>${email}</strong></li>
+                              <li>Enter your password: <strong>${password}</strong></li>
+                            </ol>
+                          </div>
+                          
+                          <p style="color: #666; font-size: 14px;">
+                            If the button doesn't work, copy and paste this link into your browser:<br>
+                            <a href="${verificationUrl}?confirmation=${confirmationToken}">${verificationUrl}?confirmation=${confirmationToken}</a>
+                          </p>
+                          
+                          <p style="color: #666; font-size: 12px;">
+                            If you did not create this account, please ignore this email.
+                          </p>
+                          
+                          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                          <p style="color: #999; font-size: 11px;">
+                            © 2024 Knowledge Bot. All rights reserved.
+                          </p>
+                        </div>
+                      `,
+                      text: `🎉 Welcome to Knowledge Bot!
+
+Your account has been created successfully!
+
+📋 ACCOUNT INFORMATION:
+Email: ${email}
+Password: ${password}
+Company: ${company.name}
+
+⚠️ IMPORTANT: Use your EMAIL ADDRESS (not username) to log in!
+
+🔐 EMAIL VERIFICATION REQUIRED:
+You must verify your email before you can log in.
+Click this link: ${verificationUrl}?confirmation=${confirmationToken}
+
+🚀 NEXT STEPS:
+1. Click the verification link above
+2. Go to: http://localhost:1337/admin/auth/login
+3. Login with email: ${email}
+4. Enter password: ${password}
+
+If you did not create this account, please ignore this email.
+
+Best regards,
+The Knowledge Bot Team`
+                    });
+                    
+                    console.log('✅ Verification email sent successfully');
+                  } catch (emailError) {
+                    console.error('⚠️ Failed to send verification email:', emailError.message);
+                    // Don't block registration if email fails
+                  }
+                };
+                
+                // Send email in background, don't wait for it
+                sendVerificationEmail();
               }
             } catch (contentUserError) {
               console.error('⚠️ Error creating users-permissions user:', contentUserError);
@@ -309,8 +554,32 @@ module.exports = (config, { strapi }) => {
               console.error('Error stack:', contentUserError.stack);
               if (contentUserError.details) {
                 console.error('Error details object:', JSON.stringify(contentUserError.details, null, 2));
+                
+                // Check for validation errors (like unique constraint violations)
+                if (contentUserError.details.errors && Array.isArray(contentUserError.details.errors)) {
+                  const errors = contentUserError.details.errors;
+                  for (const error of errors) {
+                    if (error.path && (error.path.includes('username') || error.path.includes('email')) && 
+                        error.message && error.message.includes('unique')) {
+                      return ctx.badRequest({
+                        error: {
+                          message: 'This email address is already registered. Please use a different email address or try logging in instead.',
+                          type: 'ValidationError',
+                          field: 'email'
+                        }
+                      });
+                    }
+                  }
+                }
               }
-              // Continue even if content user creation fails
+              
+              // For other types of user creation errors, also return an error
+              return ctx.badRequest({
+                error: {
+                  message: 'Failed to create user account. Please try again or contact support if the problem persists.',
+                  type: 'UserCreationError'
+                }
+              });
             }
             
             console.log(`✅ Admin registration completed: ${email} -> ${username} @ ${company.name}`);
@@ -335,7 +604,7 @@ module.exports = (config, { strapi }) => {
             console.warn('Failed to log admin registration:', logError);
           }
 
-          // Return success response
+          // Return success response with email verification notice
           return ctx.send({
             user: {
               id: adminUser.id,
@@ -344,12 +613,52 @@ module.exports = (config, { strapi }) => {
               username: adminUser.username,
               email: adminUser.email,
               company: company.name
-            }
+            },
+            message: 'Account created successfully! Please check your email to verify your account before logging in.',
+            emailVerificationRequired: true
           });
         }
       } catch (error) {
         console.error('❌ Admin registration error:', error);
-        return ctx.internalServerError('Registration failed');
+        
+        // Provide more specific error messages based on error type
+        if (error.message && error.message.includes('email')) {
+          return ctx.badRequest({
+            error: {
+              message: 'Invalid email address provided. Please check your email and try again.',
+              type: 'ValidationError',
+              field: 'email'
+            }
+          });
+        }
+        
+        if (error.message && error.message.includes('company')) {
+          return ctx.badRequest({
+            error: {
+              message: 'Company information is invalid. Please check the company name and try again.',
+              type: 'ValidationError',
+              field: 'company'
+            }
+          });
+        }
+        
+        if (error.message && error.message.includes('password')) {
+          return ctx.badRequest({
+            error: {
+              message: 'Password requirements not met. Please ensure your password is at least 8 characters long.',
+              type: 'ValidationError',
+              field: 'password'
+            }
+          });
+        }
+        
+        // Generic error for unexpected issues
+        return ctx.internalServerError({
+          error: {
+            message: 'Registration failed due to an unexpected error. Please try again or contact support.',
+            type: 'ServerError'
+          }
+        });
       }
     }
 

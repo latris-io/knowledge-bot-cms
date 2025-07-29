@@ -103,6 +103,54 @@
     const companyError = document.getElementById('company-error');
     const emailInput = form.querySelector('input[name="email"]');
 
+    // Debug: Ensure email field is not disabled
+    console.log('📧 Email input found:', emailInput);
+    console.log('📧 Email input disabled state:', emailInput?.disabled);
+    console.log('📧 Email input readonly state:', emailInput?.readOnly);
+    console.log('📧 Email input aria-disabled:', emailInput?.getAttribute('aria-disabled'));
+    console.log('📧 Email input data-disabled:', emailInput?.hasAttribute('data-disabled'));
+    
+    // SIMPLE FIX: Replace the broken React input with a working HTML input
+    if (emailInput) {
+      console.log('🔄 REPLACING broken React input with clean HTML input...');
+      
+      // Get the current container and styling
+      const container = emailInput.parentNode;
+      const currentClasses = emailInput.className;
+      const currentId = emailInput.id;
+      
+      // Create a completely new, clean HTML input
+      const newEmailInput = document.createElement('input');
+      newEmailInput.type = 'email';
+      newEmailInput.name = 'email';
+      newEmailInput.id = currentId;
+      newEmailInput.required = true;
+      newEmailInput.autocomplete = 'email';
+      newEmailInput.placeholder = 'Enter your email address';
+      newEmailInput.className = currentClasses;
+      
+      // Apply clean, working styles
+      newEmailInput.style.cssText = `
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #dcdce4;
+        border-radius: 4px;
+        font-size: 14px;
+        background: #ffffff;
+        color: #000000;
+        font-family: inherit;
+        line-height: normal;
+        transition: border-color 0.2s;
+        box-sizing: border-box;
+      `;
+      
+      // Replace the broken input with our working one
+      container.replaceChild(newEmailInput, emailInput);
+      
+            console.log('✅ Replaced broken React input with clean HTML input');
+            console.log('✅ Email field is now fully functional - try typing in it!');
+    }
+
     let selectedCompany = null;
     let domainCompany = null; // Company from domain check
 
@@ -124,9 +172,10 @@
       return null;
     }
 
-    // Email input change handler
-    if (emailInput) {
-      emailInput.addEventListener('blur', async function() {
+    // Email input change handler - get the new email input
+    const newEmailField = form.querySelector('input[name="email"]');
+    if (newEmailField) {
+      newEmailField.addEventListener('blur', async function() {
         const email = this.value.trim();
         if (!email || !email.includes('@')) return;
 
@@ -296,12 +345,13 @@
     
     // Custom validation for company name
     if (!data.companyName?.trim()) {
-      // If company was auto-filled from domain, use that
-      if (domainCompany && companyInput.disabled) {
-        data.companyName = domainCompany.name;
+      // Check if company field is disabled (meaning it was auto-filled)
+      const companyField = document.getElementById('companyName');
+      if (companyField && companyField.disabled && companyField.value) {
+        data.companyName = companyField.value;
       } else {
-      showFieldError('companyName', 'This value is required.');
-      hasErrors = true;
+        showFieldError('companyName', 'This value is required.');
+        hasErrors = true;
       }
     }
     
@@ -341,21 +391,80 @@
       const result = await response.json();
 
       if (response.ok) {
-        // Show success message
-        alert(`✅ Admin account created successfully!\\n\\n🔑 LOGIN INSTRUCTIONS:\\nEmail: ${result.user.email}\\nPassword: [your password]\\nCompany: ${result.user.company}\\n\\n⚠️ IMPORTANT: Use your EMAIL to login to the admin panel!`);
+        // Show simple success message
+        if (result.emailVerificationRequired) {
+          alert(`✅ Account created successfully!\\n\\n📧 We've sent you an email with your account details and verification link.\\n\\n🔍 DEVELOPMENT MODE: Check the server console for full account information.\\n\\n⚠️ You must verify your email before you can log in.`);
+        } else {
+          alert(`✅ Admin account created successfully!\\n\\nCheck your email for login instructions.`);
+        }
 
-        // Redirect to login
-        window.location.href = '/admin/auth/login';
+        // Redirect to login after a brief delay
+        setTimeout(() => {
+          window.location.href = '/admin/auth/login';
+        }, 1000);
       } else {
         console.error('❌ Registration failed:', result);
         
-        // Show error message
-        const errorMessage = result.error?.message || result.message || 'Registration failed';
-        alert(`❌ Registration failed: ${errorMessage}`);
+        // Extract and show detailed error message
+        let errorMessage = '❌ Registration failed. Please try again.';
+        
+        try {
+          if (result.error) {
+            if (result.error.message) {
+              errorMessage = `❌ Registration Error: ${result.error.message}`;
+            } else if (typeof result.error === 'string') {
+              errorMessage = `❌ Registration Error: ${result.error}`;
+            }
+          } else if (result.message) {
+            errorMessage = `❌ Registration Error: ${result.message}`;
+          } else if (result.details && result.details.errors) {
+            // Handle validation errors (like unique constraint violations)
+            const errors = result.details.errors;
+            if (Array.isArray(errors) && errors.length > 0) {
+              const errorMessages = errors.map(err => {
+                if (err.message) {
+                  if (err.path && err.path.length > 0) {
+                    const field = err.path[0];
+                    if (field === 'username' || field === 'email') {
+                      return `Email address is already registered. Please use a different email or try logging in.`;
+                    }
+                    return `${field}: ${err.message}`;
+                  }
+                  return err.message;
+                }
+                return 'Validation error';
+              });
+              errorMessage = `❌ Registration Issues:\\n\\n${errorMessages.join('\\n')}`;
+            }
+          }
+          
+          // Handle specific common server errors
+          if (errorMessage.includes('must be unique')) {
+            errorMessage = '❌ Registration Error:\\n\\nThis email address is already registered.\\n\\nPlease try:\\n• Using a different email address\\n• Logging in if you already have an account';
+          }
+          
+        } catch (parseError) {
+          console.error('Error parsing error response:', parseError);
+          errorMessage = `❌ Registration failed: ${JSON.stringify(result)}`;
+        }
+        
+        alert(errorMessage);
       }
     } catch (error) {
       console.error('❌ Registration error:', error);
-      alert(`❌ Registration failed: ${error.message}`);
+      
+      // Handle network and other errors
+      let errorMessage = '❌ Registration failed';
+      
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage = '❌ Network Error\\n\\nCannot connect to the server. Please check your internet connection and try again.';
+      } else if (error.message) {
+        errorMessage = `❌ Registration Error: ${error.message}`;
+      } else {
+        errorMessage = '❌ Registration failed due to an unexpected error. Please try again.';
+      }
+      
+      alert(errorMessage);
     } finally {
       // Re-enable submit button
       if (submitButton) {

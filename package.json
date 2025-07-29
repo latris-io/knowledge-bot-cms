@@ -34,6 +34,8 @@
     "@aws-sdk/s3-request-presigner": "^3.520.0",
     "@strapi/plugin-cloud": "5.12.6",
     "@strapi/plugin-users-permissions": "5.12.6",
+    "@strapi/provider-email-nodemailer": "^5.19.0",
+    "@strapi/provider-email-sendmail": "^5.19.0",
     "@strapi/provider-upload-aws-s3": "^5.12.6",
     "@strapi/strapi": "5.12.6",
     "axios": "^1.11.0",
