@@ -1,44 +1,56 @@
-module.exports = ({ env }) => ({
-  upload: {
-    enabled: true,  // Explicitly enable the upload plugin
+module.exports = ({ env }) => {
+  // Determine if we're in production
+  const isProduction = env('NODE_ENV') === 'production';
+  
+  // Base configuration
+  const baseConfig = {
+    enabled: true,
     config: {
-      provider: 'local',  // Switch to local provider for testing
-      sizeLimit: 250 * 1024 * 1024, // 250mb in bytes - moved to config level
-      providerOptions: {},
-      /* Temporarily disabled AWS S3 configuration
-      provider: 'aws-s3',
-      providerOptions: {
-        s3Options: {
-          credentials: {
-            accessKeyId: env('AWS_ACCESS_KEY_ID'),
-            secretAccessKey: env('AWS_SECRET_ACCESS_KEY'),
-          },
-          region: env('AWS_REGION'),
-          params: {
-            Bucket: env('AWS_BUCKET_NAME'),
-          },
-        },
-        // Add file extension restrictions - matching ingestion service supported formats
-        allowedExtensions: ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.xls', '.xlsx', '.ods', '.csv', '.ppt', '.pptx', '.odp', '.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.html', '.htm', '.md', '.markdown', '.zip', '.rar', '.7z'],
-      },
-      actionOptions: {
-        upload: {
-          ACL: 'private',  // ✅ Correct: makes uploads private, no public-read
-        },
-        uploadStream: {
-          ACL: 'private',  // ✅ Correct for streamed uploads
-        },
-        delete: {},
-      },
-      */
+      sizeLimit: 250 * 1024 * 1024, // 250mb in bytes
     },
-  },
-  'users-permissions': {
-    config: {
-      jwtSecret: env('JWT_SECRET'),
+  };
+
+  // Production configuration (S3)
+  if (isProduction) {
+    baseConfig.config.provider = 'aws-s3';
+    baseConfig.config.providerOptions = {
+      s3Options: {
+        credentials: {
+          accessKeyId: env('AWS_ACCESS_KEY_ID'),
+          secretAccessKey: env('AWS_SECRET_ACCESS_KEY'),
+        },
+        region: env('AWS_REGION'),
+        params: {
+          Bucket: env('AWS_BUCKET_NAME'),
+        },
+      },
+      // Add file extension restrictions - matching ingestion service supported formats
+      allowedExtensions: ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.odt', '.xls', '.xlsx', '.ods', '.csv', '.ppt', '.pptx', '.odp', '.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.html', '.htm', '.md', '.markdown', '.zip', '.rar', '.7z'],
+    };
+    baseConfig.config.actionOptions = {
+      upload: {
+        ACL: 'private', // Makes uploads private, no public-read
+      },
+      uploadStream: {
+        ACL: 'private', // For streamed uploads
+      },
+      delete: {},
+    };
+  } else {
+    // Development configuration (local)
+    baseConfig.config.provider = 'local';
+    baseConfig.config.providerOptions = {};
+  }
+
+  return {
+    upload: baseConfig,
+    'users-permissions': {
+      config: {
+        jwtSecret: env('JWT_SECRET'),
+      },
     },
-  },
-  'document-service': {
-    enabled: false // Disable Document Service globally
-  },
-});
+    'document-service': {
+      enabled: false // Disable Document Service globally
+    },
+  };
+};
