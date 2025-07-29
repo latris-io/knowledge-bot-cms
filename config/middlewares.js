@@ -10,18 +10,40 @@ module.exports = [
           'script-src': [
             "'self'",
             "'unsafe-inline'",
+            "'unsafe-eval'",
             'https://cdn.jsdelivr.net',
-            'https://knowledge-bot-retrieval.onrender.com'
+            'https://knowledge-bot-retrieval.onrender.com',
+            'https:',
+          ],
+          'script-src-elem': [
+            "'self'",
+            "'unsafe-inline'",
+            'https://cdn.jsdelivr.net',
+            'https://knowledge-bot-retrieval.onrender.com',
+            'https:',
           ],
           'connect-src': [
             "'self'",
-            'https://knowledge-bot-retrieval.onrender.com'
+            'https://knowledge-bot-retrieval.onrender.com',
+            'wss://knowledge-bot-retrieval.onrender.com',
+            'https:',
+            'wss:',
           ],
           'img-src': [
             "'self'",
             'data:',
             'blob:',
-            'https:'
+            'https:',
+          ],
+          'style-src': [
+            "'self'",
+            "'unsafe-inline'",
+            'https:',
+          ],
+          'font-src': [
+            "'self'",
+            'data:',
+            'https:',
           ],
           upgradeInsecureRequests: null,
         },
