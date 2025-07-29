@@ -124,7 +124,7 @@ const AiChat = () => {
   useEffect(() => {
     const timeoutId = setTimeout(scrollToBottom, 50);
     return () => clearTimeout(timeoutId);
-  }, [messages.length, scrollToBottom]); // Only trigger on message count change, not content
+  }, [messages, scrollToBottom]); // Trigger on any message changes (count or content)
 
   // Back to JWT approach that was working before - memoized for performance
   const fetchUserData = useCallback(async () => {
