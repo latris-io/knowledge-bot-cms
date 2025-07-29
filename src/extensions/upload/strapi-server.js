@@ -196,61 +196,8 @@ module.exports = (plugin) => {
       }
     },
 
-    async afterUpdate(event) {
-      const { result, params } = event;
-      
-      console.log('📝 [FILE LIFECYCLE] afterUpdate triggered for file:', result.name);
-      
-      try {
-        // Only create update event if file has a bot assigned
-        if (result.bot) {
-          // Get user info from context
-          let userId = null;
-          try {
-            const ctx = strapi.requestContext?.get?.();
-            if (ctx?.state?.user) {
-              userId = ctx.state.user.id;
-            } else if (ctx?.state?.auth?.credentials) {
-              const adminEmail = ctx.state.auth.credentials.email;
-              const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
-                filters: { email: adminEmail },
-                limit: 1
-              });
-              if (users && users.length > 0) {
-                userId = users[0].id;
-              }
-            }
-          } catch (error) {
-            console.log('⚠️ Could not get user context for update:', error.message);
-          }
-
-          // Create update event
-          try {
-            const fileSizeInBytes = Math.round((result.size || 0) * 1024);
-            
-            await strapi.entityService.create('api::file-event.file-event', {
-              data: {
-                file_document_id: result.documentId || result.id.toString(),
-                file_name: result.name,
-                file_type: result.mime,
-                file_size: fileSizeInBytes,
-                event_type: 'updated',
-                processing_status: 'pending',
-                user_id: userId,
-                bot_id: result.bot.id || result.bot,
-                company_id: result.company?.id || result.company,
-                publishedAt: new Date().toISOString(),
-              }
-            });
-            console.log(`✅ Update event created for file ${result.name}`);
-          } catch (error) {
-            console.error('❌ Error creating update event:', error);
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error in file afterUpdate lifecycle:', error);
-      }
-    },
+    // Note: v1.3.0 only tracked file replacements (new file uploaded with same ID) as "updated" events
+    // through the middleware, not general metadata updates. Removing afterUpdate to match v1.3.0 behavior.
 
     async beforeDelete(event) {
       const { params } = event;
