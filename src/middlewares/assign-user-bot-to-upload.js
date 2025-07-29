@@ -19,7 +19,7 @@ module.exports = (config, { strapi }) => {
       console.log('⏭️ Skipping - not a POST upload request');
       return await next();
     }
-
+    
     // Detect if this is a file replacement (update) or new upload (create) - v1.3.0 method
     console.log('🔍 Request debugging:');
     console.log('🔍 ctx.query:', JSON.stringify(ctx.query));
@@ -154,8 +154,8 @@ module.exports = (config, { strapi }) => {
                 } else {
                   console.error(`❌ Bot ${botId} not found or doesn't belong to user's company`);
                   continue; // Skip this file if bot verification fails
-                }
-              } catch (error) {
+          }
+        } catch (error) {
                 console.error(`❌ Error verifying bot ${botId}:`, error.message);
                 continue; // Skip this file if bot verification fails
               }

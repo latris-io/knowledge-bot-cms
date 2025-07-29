@@ -51,7 +51,7 @@ module.exports = (plugin) => {
               file_type: fileWithRelations.mime,
               file_size: fileSizeInBytes,
               processing_status: 'completed', // Deleted files are considered "completed"
-              processed: true,
+              processed: false,
               bot_id: fileWithRelations.bot?.id || null,
               company_id: fileWithRelations.company?.id || null,
               user_id: fileWithRelations.user?.id || null,
