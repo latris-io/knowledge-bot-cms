@@ -320,36 +320,34 @@ module.exports = (plugin) => {
             data: updateData
           });
           console.log(`✅ File relations updated successfully`);
+        }
+        
+        // Create file event for all uploads (not just bot folders)
+        try {
+          // Convert file size from KB to bytes and ensure it's an integer
+          const fileSizeInBytes = Math.round((file.size || 0) * 1024);
           
-          // Create file event if bot is assigned
-          if (updateData.bot) {
-            try {
-              // Convert file size from KB to bytes and ensure it's an integer
-              const fileSizeInBytes = Math.round((file.size || 0) * 1024);
-              
-              // Determine event type based on whether this is a replacement
-              const eventType = isReplacement ? 'updated' : 'created';
-              console.log(`📊 Creating file event (${eventType}) for file ${file.name}`);
-              
-              await strapi.entityService.create('api::file-event.file-event', {
-                data: {
-                  file_document_id: file.documentId || file.id.toString(),
-                  file_name: file.name,
-                  file_type: file.mime,
-                  file_size: fileSizeInBytes,
-                  event_type: eventType,
-                  processing_status: 'pending',
-                  user_id: updateData.user,
-                  bot_id: updateData.bot,
-                  company_id: updateData.company,
-                  publishedAt: new Date().toISOString(),
-                }
-              });
-              console.log(`✅ File event (${eventType}) created for file ${file.name}`);
-            } catch (error) {
-              console.error('❌ Error creating file event:', error);
+          // Determine event type based on whether this is a replacement
+          const eventType = isReplacement ? 'updated' : 'created';
+          console.log(`📊 Creating file event (${eventType}) for file ${file.name}`);
+          
+          await strapi.entityService.create('api::file-event.file-event', {
+            data: {
+              file_document_id: file.documentId || file.id.toString(),
+              file_name: file.name,
+              file_type: file.mime,
+              file_size: fileSizeInBytes,
+              event_type: eventType,
+              processing_status: 'pending',
+              user_id: updateData.user || user?.id || null,
+              bot_id: updateData.bot || null,
+              company_id: updateData.company || user?.company?.id || null,
+              publishedAt: new Date().toISOString(),
             }
-          }
+          });
+          console.log(`✅ File event (${eventType}) created for file ${file.name}`);
+        } catch (error) {
+          console.error('❌ Error creating file event:', error);
         }
       } catch (error) {
         console.error(`❌ Error processing file ${file.id}:`, error);
