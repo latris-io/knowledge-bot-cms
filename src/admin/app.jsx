@@ -107,6 +107,33 @@ export default {
   bootstrap(app) {
     console.log('🚀 [ADMIN APP] Bootstrap function called');
     
+    // Inject registration extension script
+    const injectRegistrationExtension = () => {
+      console.log('📝 [ADMIN APP] Injecting registration extension script...');
+      
+      try {
+        // Check if script is already injected
+        if (document.querySelector('[data-registration-extension="true"]')) {
+          console.log('⚠️ [ADMIN APP] Registration extension already injected, skipping');
+          return;
+        }
+        
+        // Create and inject the registration extension script
+        const registrationScript = document.createElement('script');
+        registrationScript.src = '/admin-registration-extension.js';
+        registrationScript.setAttribute('data-registration-extension', 'true');
+        registrationScript.async = true;
+        document.head.appendChild(registrationScript);
+        console.log('✅ [ADMIN APP] Registration extension script injected');
+        
+      } catch (error) {
+        console.error('❌ [ADMIN APP] Error injecting registration extension script:', error);
+      }
+    };
+    
+    // Inject registration extension immediately
+    injectRegistrationExtension();
+    
     // Inject AI bot widget scripts
     const injectAiBotWidget = () => {
       console.log('🤖 [ADMIN APP] Injecting AI bot widget scripts...');
