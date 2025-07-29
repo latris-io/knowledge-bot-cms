@@ -328,7 +328,7 @@ module.exports = (plugin) => {
         }
       }
     }
-    
+
     return {
       ...baseService,
       
@@ -426,4 +426,4 @@ module.exports = (plugin) => {
   };
 
   return plugin;
-};
+}; 
