@@ -23,15 +23,16 @@ module.exports = (plugin) => {
       try {
         let updateData = {};
         
-        // Generate storage_key - this is typically the path where the file is stored
-        // For local storage, it would be like: /uploads/{hash}_{name}.{ext}
-        // For S3, it might include the bucket path
-        if (result.url) {
-          // Extract storage key from URL or use a combination of hash and filename
-          updateData.storage_key = result.url.startsWith('/uploads/') 
-            ? result.url.substring(1) // Remove leading slash
-            : `uploads/${result.hash}${result.ext}`;
+        // Generate storage_key - this should be just the filename (hash + extension)
+        // For S3 compatibility, it should be like: Lucas_Offices_a5fc8b82d0.xlsx
+        if (result.hash && result.ext) {
+          updateData.storage_key = `${result.hash}${result.ext}`;
           console.log(`🔑 Setting storage_key: ${updateData.storage_key}`);
+        } else if (result.url) {
+          // Extract just the filename from the URL
+          const urlParts = result.url.split('/');
+          updateData.storage_key = urlParts[urlParts.length - 1];
+          console.log(`🔑 Setting storage_key from URL: ${updateData.storage_key}`);
         }
         
         // Set source_type to manual_upload for files uploaded through the admin panel
