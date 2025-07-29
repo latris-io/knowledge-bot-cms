@@ -107,6 +107,54 @@ export default {
   bootstrap(app) {
     console.log('🚀 [ADMIN APP] Bootstrap function called');
     
+    // Inject AI bot widget scripts
+    const injectAiBotWidget = () => {
+      console.log('🤖 [ADMIN APP] Injecting AI bot widget scripts...');
+      
+      try {
+        // Check if scripts are already injected to avoid duplicates
+        if (document.querySelector('[data-ai-widget-injected="true"]')) {
+          console.log('⚠️ [ADMIN APP] AI widget scripts already injected, skipping');
+          return;
+        }
+        
+        // Create a marker to track injection
+        const marker = document.createElement('meta');
+        marker.setAttribute('data-ai-widget-injected', 'true');
+        document.head.appendChild(marker);
+        
+        // 1. Markdown renderer
+        const markedScript = document.createElement('script');
+        markedScript.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+        markedScript.async = true;
+        document.head.appendChild(markedScript);
+        console.log('✅ [ADMIN APP] Marked.js script injected');
+        
+        // 2. DOMPurify sanitizer (optional but recommended)
+        const domPurifyScript = document.createElement('script');
+        domPurifyScript.src = 'https://cdn.jsdelivr.net/npm/dompurify@3.0.2/dist/purify.min.js';
+        domPurifyScript.async = true;
+        document.head.appendChild(domPurifyScript);
+        console.log('✅ [ADMIN APP] DOMPurify script injected');
+        
+        // 3. AI Bot widget loader (with defer to wait for dependencies)
+        const widgetScript = document.createElement('script');
+        widgetScript.src = 'https://knowledge-bot-retrieval.onrender.com/static/widget.js';
+        widgetScript.setAttribute('data-token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb21wYW55X2lkIjo3LCJib3RfaWQiOiJib3RfMTc1Mzc0MTczNTQyM193a21qcjl5cGsiLCJpYXQiOjE3NTM3NDE3MzV9.pPxibBgF3X_WmohuDCBj3XHbNripy0gfFPaTkIgX1KE');
+        widgetScript.defer = true;
+        document.head.appendChild(widgetScript);
+        console.log('✅ [ADMIN APP] AI Bot widget script injected');
+        
+        console.log('🎉 [ADMIN APP] All AI bot widget scripts successfully injected');
+        
+      } catch (error) {
+        console.error('❌ [ADMIN APP] Error injecting AI bot widget scripts:', error);
+      }
+    };
+    
+    // Inject widget scripts immediately
+    injectAiBotWidget();
+    
     // Simple approach: hide Content Manager and Settings for non-admin users
     const hideMenuItemsForStandardUsers = () => {
       console.log('🔍 [ADMIN APP] Checking if menu items should be hidden...');
