@@ -23,6 +23,20 @@ module.exports = (plugin) => {
       try {
         let updateData = {};
         
+        // Generate storage_key - this is typically the path where the file is stored
+        // For local storage, it would be like: /uploads/{hash}_{name}.{ext}
+        // For S3, it might include the bucket path
+        if (result.url) {
+          // Extract storage key from URL or use a combination of hash and filename
+          updateData.storage_key = result.url.startsWith('/uploads/') 
+            ? result.url.substring(1) // Remove leading slash
+            : `uploads/${result.hash}${result.ext}`;
+          console.log(`🔑 Setting storage_key: ${updateData.storage_key}`);
+        }
+        
+        // Set source_type to manual_upload for files uploaded through the admin panel
+        updateData.source_type = 'manual_upload';
+        
         // Try to get the current user from various sources
         let user = null;
         
@@ -164,15 +178,13 @@ module.exports = (plugin) => {
                   processing_status: 'pending',
                   user_id: updateData.user,
                   bot_id: updateData.bot,
-                  company_id: updateData.company
+                  company_id: updateData.company,
+                  publishedAt: new Date().toISOString(), // Ensure publishedAt is set
                 }
               });
-              console.log('📊 File event created for tracking');
-            } catch (error) {
-              console.error('❌ Error creating file event:', error);
-              if (error.details && error.details.errors) {
-                console.error('Validation errors:', error.details.errors);
-              }
+              console.log(`✅ File event created for file ${result.name}`);
+            } catch (fileEventError) {
+              console.error('❌ Error creating file event:', fileEventError);
             }
           }
         } else {
