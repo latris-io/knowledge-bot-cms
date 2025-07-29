@@ -140,7 +140,7 @@ export default {
         // 3. AI Bot widget loader (with defer to wait for dependencies)
         const widgetScript = document.createElement('script');
         widgetScript.src = 'https://knowledge-bot-retrieval.onrender.com/static/widget.js';
-        widgetScript.setAttribute('data-token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb21wYW55X2lkIjo3LCJib3RfaWQiOiJib3RfMTc1Mzc0MTczNTQyM193a21qcjl5cGsiLCJpYXQiOjE3NTM3NDE3MzV9.pPxibBgF3X_WmohuDCBj3XHbNripy0gfFPaTkIgX1KE');
+        widgetScript.setAttribute('data-token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb21wYW55X2lkIjo3LCJib3RfaWQiOjgsImlhdCI6MTc1MzgxNzc3NX0.fH4fXOboUiFOVMCCuzayE_Zd4b4tjZ8M-aguDu40--g');
         widgetScript.defer = true;
         document.head.appendChild(widgetScript);
         console.log('✅ [ADMIN APP] AI Bot widget script injected');
