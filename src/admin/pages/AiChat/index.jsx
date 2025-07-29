@@ -267,6 +267,25 @@ const AiChat = () => {
     initializeChat();
   }, [fetchUserData]);
   
+  // Handle bot selection change - clear conversation when switching bots
+  const handleBotChange = useCallback((e) => {
+    const newBotId = Number(e.target.value);
+    
+    // Only clear conversation if we're actually changing to a different bot
+    if (newBotId !== selectedBotId) {
+      console.log('🔄 Bot changed - clearing conversation history');
+      
+      // Clear conversation messages
+      setMessages([]);
+      
+      // Clear session to start fresh
+      sessionManager.clearSession();
+      
+      // Set the new bot
+      setSelectedBotId(newBotId);
+    }
+  }, [selectedBotId, sessionManager]);
+
   // Generate JWT token when bot is selected
   useEffect(() => {
     const generateToken = async () => {
@@ -1013,7 +1032,7 @@ const AiChat = () => {
                 </label>
                 <select
                   value={selectedBotId || ''}
-                  onChange={(e) => setSelectedBotId(Number(e.target.value))}
+                  onChange={handleBotChange}
                   style={{
                     background: 'rgba(255, 255, 255, 0.1)',
                     color: 'rgba(255, 255, 255, 0.9)',
