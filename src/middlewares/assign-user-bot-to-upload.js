@@ -30,41 +30,45 @@ module.exports = (config, { strapi }) => {
     const eventType = isReplacement ? 'updated' : 'created';
     console.log(`📌 Upload event type: ${eventType} (isReplacement: ${isReplacement})`);
     
-    // Debug authentication context
-    console.log('🔍 ctx.state keys:', Object.keys(ctx.state));
-    console.log('🔍 ctx.request.headers.authorization:', ctx.request.headers.authorization ? 'SET' : 'NOT SET'); 
-    console.log('🔍 ctx.request.headers.cookie:', ctx.request.headers.cookie ? 'SET' : 'NOT SET');
+    // 🎯 PROPER STRAPI 5 WAY: Use built-in authentication context
+    let user = ctx.state.user;        // users-permissions user
+    let admin = ctx.state.admin;       // admin user
     
-    // Get the authenticated user from Strapi context (much cleaner!)
-    let user = ctx.state.user;
-    console.log('🔍 ctx.state.user:', user ? { id: user.id, email: user.email } : 'null');
-    console.log('🔍 ctx.state.admin:', ctx.state.admin ? { id: ctx.state.admin.id, email: ctx.state.admin.email } : 'null');
+    console.log('🔍 Authentication Context:');
+    console.log('   ctx.state.user:', user ? { id: user.id, email: user.email } : 'null');
+    console.log('   ctx.state.admin:', admin ? { id: admin.id, email: admin.email } : 'null');
+    console.log('   Authorization header:', ctx.request.headers.authorization ? 'SET' : 'NOT SET');
     
-    if (!user && ctx.state.admin) {
-      // For admin users, find the corresponding users-permissions user by email
+    // 🎯 STRAPI 5 USER RESOLUTION (Best Practice First)
+    if (!user && admin) {
+      // For admin users, find the corresponding users-permissions user
       console.log('🔄 Admin user detected, finding corresponding users-permissions user...');
       const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
-        filters: { email: ctx.state.admin.email },
+        filters: { email: admin.email },
         limit: 1,
         populate: ['company']
       });
       user = users[0];
-      console.log('✅ Found corresponding users-permissions user:', user ? { id: user.id, email: user.email, company: user.company?.id } : 'null');
+      console.log('✅ Found corresponding users-permissions user:', user?.email || 'null');
     } else if (user) {
-      // Reload user to ensure company is populated
-      console.log('🔄 Reloading user to populate company...');
+      // Ensure user has company populated
+      console.log('🔄 Ensuring user company is populated...');
       const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
         filters: { documentId: user.documentId },
         limit: 1,
         populate: ['company']
       });
-      if (users && users.length > 0) {
+      if (users?.length > 0) {
         user = users[0];
-        console.log('✅ User reloaded with company:', user ? { id: user.id, email: user.email, company: user.company?.id } : 'null');
+        console.log('✅ User company populated:', user?.company?.id || 'no company');
       }
-    } else if (!user && !ctx.state.admin) {
-      // Fallback: Try to manually authenticate using JWT tokens
-      console.log('🔄 No user context found, attempting manual authentication...');
+    }
+    
+    // 🛡️ FALLBACK: Manual JWT Authentication 
+    // This should NOT be needed in proper Strapi 5, but serves as a safety net
+    // when ctx.state.user/admin are unexpectedly empty (e.g., middleware timing issues)
+    if (!user && !admin) {
+      console.log('⚠️ FALLBACK: ctx.state is empty, attempting manual JWT authentication...');
       
       const authHeader = ctx.request.headers.authorization;
       if (authHeader) {
