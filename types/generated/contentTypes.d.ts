@@ -1145,16 +1145,17 @@ export interface PluginUsersPermissionsUser
       }>;
     email_format: Schema.Attribute.Enumeration<
       ['detailed', 'summary', 'minimal']
-    >;
+    > &
+      Schema.Attribute.DefaultTo<'detailed'>;
     feature_announcements: Schema.Attribute.Boolean &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<false>;
     include_failures: Schema.Attribute.Boolean &
-      Schema.Attribute.DefaultTo<false>;
+      Schema.Attribute.DefaultTo<true>;
     include_processing: Schema.Attribute.Boolean &
-      Schema.Attribute.DefaultTo<false>;
+      Schema.Attribute.DefaultTo<true>;
     include_successes: Schema.Attribute.Boolean &
-      Schema.Attribute.DefaultTo<false>;
+      Schema.Attribute.DefaultTo<true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1166,10 +1167,12 @@ export interface PluginUsersPermissionsUser
       Schema.Attribute.DefaultTo<false>;
     notification_channel: Schema.Attribute.Enumeration<
       ['email', 'sms', 'webhook']
-    >;
+    > &
+      Schema.Attribute.DefaultTo<'email'>;
     notification_frequency: Schema.Attribute.Enumeration<
       ['immediate', 'hourly', 'daily']
-    >;
+    > &
+      Schema.Attribute.DefaultTo<'immediate'>;
     notification_grouping_window: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<
         {
@@ -1177,7 +1180,8 @@ export interface PluginUsersPermissionsUser
           min: 0;
         },
         number
-      >;
+      > &
+      Schema.Attribute.DefaultTo<120>;
     password: Schema.Attribute.Password &
       Schema.Attribute.Private &
       Schema.Attribute.SetMinMaxLength<{

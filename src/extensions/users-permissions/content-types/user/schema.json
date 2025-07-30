@@ -73,32 +73,47 @@
     },
     "notification_channel": {
       "type": "enumeration",
-      "enum": ["email", "sms", "webhook"],
-      "required": false
+      "enum": [
+        "email",
+        "sms",
+        "webhook"
+      ],
+      "required": false,
+      "default": "email"
     },
     "notification_frequency": {
       "type": "enumeration",
-      "enum": ["immediate", "hourly", "daily"],
-      "required": false
+      "enum": [
+        "immediate",
+        "hourly",
+        "daily"
+      ],
+      "required": false,
+      "default": "immediate"
     },
     "email_format": {
       "type": "enumeration",
-      "enum": ["detailed", "summary", "minimal"],
-      "required": false
+      "enum": [
+        "detailed",
+        "summary",
+        "minimal"
+      ],
+      "required": false,
+      "default": "detailed"
     },
     "include_failures": {
       "type": "boolean",
-      "default": false,
+      "default": true,
       "required": false
     },
     "include_successes": {
       "type": "boolean",
-      "default": false,
+      "default": true,
       "required": false
     },
     "include_processing": {
       "type": "boolean",
-      "default": false,
+      "default": true,
       "required": false,
       "description": "Include files that are still being processed when the notification is sent"
     },
@@ -109,7 +124,8 @@
       "type": "integer",
       "min": 0,
       "max": 3600,
-      "required": false
+      "required": false,
+      "default": 120
     },
     "billing_notifications": {
       "type": "boolean",
@@ -117,21 +133,21 @@
       "required": true
     },
     "subscription_reminders": {
-      "type": "boolean", 
+      "type": "boolean",
       "default": true,
       "required": true,
       "description": "Receive reminders about upcoming subscription renewals and plan changes. Use Case: Help users stay aware of their subscription lifecycle to avoid service interruptions. Example: 'Your Professional plan will renew in 3 days for $49/month.'"
     },
     "trial_ending_alerts": {
       "type": "boolean",
-      "default": true, 
+      "default": true,
       "required": true,
       "description": "Receive alerts when free trial period is ending. Use Case: Prompt users to choose a paid plan before losing access to the service. Example: 'Your free trial ends in 2 days. Choose a plan to continue using Knowledge Bot.'"
     },
     "storage_limit_warnings": {
       "type": "boolean",
       "default": true,
-      "required": true, 
+      "required": true,
       "description": "Receive warnings when approaching or exceeding storage limits. Use Case: Alert users before uploads are blocked due to storage constraints. Example: 'You have used 1.8GB of your 2GB storage limit. Consider upgrading to avoid upload restrictions.'"
     },
     "usage_analytics_reports": {
@@ -141,7 +157,7 @@
       "description": "Receive periodic reports about account usage, file uploads, and bot interactions. Use Case: Help users understand their usage patterns and optimize their workflow. Example: 'Your monthly usage report: 145 files uploaded, 2,340 AI interactions this month.'"
     },
     "security_notifications": {
-      "type": "boolean", 
+      "type": "boolean",
       "default": true,
       "required": true,
       "description": "Receive notifications about account security events like login attempts, password changes, and suspicious activity. Use Case: Keep users informed about account security to prevent unauthorized access. Example: 'New login detected from Chrome on Windows in New York, NY.'"
@@ -154,7 +170,7 @@
     },
     "marketing_communications": {
       "type": "boolean",
-      "default": false, 
+      "default": false,
       "required": true,
       "description": "Receive marketing emails including promotional offers, company news, and industry insights. Use Case: Optional marketing communications for users who want to stay connected with company updates. Example: 'Special offer: Save 20% on your first year when you upgrade to Enterprise plan.'"
     },

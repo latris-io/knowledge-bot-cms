@@ -68,15 +68,24 @@
       "min": 1,
       "required": true
     },
-
     "subscription_status": {
       "type": "enumeration",
-      "enum": ["trial", "active", "past_due", "canceled", "unpaid"],
+      "enum": [
+        "trial",
+        "active",
+        "past_due",
+        "canceled",
+        "unpaid"
+      ],
       "default": "trial"
     },
     "plan_level": {
-      "type": "enumeration", 
-      "enum": ["starter", "professional", "enterprise"],
+      "type": "enumeration",
+      "enum": [
+        "starter",
+        "professional",
+        "enterprise"
+      ],
       "default": "starter"
     },
     "storage_used_bytes": {
