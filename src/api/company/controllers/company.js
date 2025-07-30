@@ -7,7 +7,8 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 
 module.exports = createCoreController('api::company.company', ({ strapi }) => ({
-  // 🛡️ SECURE MULTI-TENANT: Company uniqueness validation endpoint
+  // 🛡️ SECURE MULTI-TENANT: Company uniqueness validation endpoint  
+  // Accessible via GET /api/companies/validate-unique?name=CompanyName
   async validateUnique(ctx) {
     try {
       const { name } = ctx.query;
