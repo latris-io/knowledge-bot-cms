@@ -44,25 +44,36 @@ module.exports = (plugin) => {
             // Convert file size from KB to bytes for consistency
             const fileSizeInBytes = Math.round((fileWithRelations.size || 0) * 1024);
             
-            const eventData = {
-              event_type: 'deleted',
-              file_document_id: fileWithRelations.documentId || fileWithRelations.id.toString(),
-              file_name: fileWithRelations.name,
-              file_type: fileWithRelations.mime,
-              file_size: fileSizeInBytes,
-              processing_status: 'completed', // Deleted files are considered "completed"
-              processed: false,
-              bot_id: fileWithRelations.bot?.id || null,
-              company_id: fileWithRelations.company?.id || null,
-              user_id: fileWithRelations.user?.id || null,
-              publishedAt: new Date().toISOString(),
-            };
+            // Extract required fields with fallback to null
+            const botId = fileWithRelations.bot?.id || null;
+            const companyId = fileWithRelations.company?.id || null;
+            const userId = fileWithRelations.user?.id || null;
             
-            console.log('📝 Creating file event (deleted) with data:', eventData);
-            await strapi.entityService.create('api::file-event.file-event', {
-              data: eventData,
-            });
-            console.log(`✅ File event (deleted) logged for file ${fileId}`);
+            // Only create file event if we have the required fields (schema validation)
+            if (botId && companyId && userId) {
+              const eventData = {
+                event_type: 'deleted',
+                file_document_id: fileWithRelations.documentId || fileWithRelations.id.toString(),
+                file_name: fileWithRelations.name,
+                file_type: fileWithRelations.mime,
+                file_size: fileSizeInBytes,
+                processing_status: 'completed', // Deleted files are considered "completed"
+                processed: false,
+                bot_id: botId,
+                company_id: companyId,
+                user_id: userId,
+                publishedAt: new Date().toISOString(),
+              };
+              
+              console.log('📝 Creating file event (deleted) with data:', eventData);
+              await strapi.entityService.create('api::file-event.file-event', {
+                data: eventData,
+              });
+              console.log(`✅ File event (deleted) logged for file ${fileId}`);
+            } else {
+              console.log(`⚠️ Skipping file event creation - missing required fields: bot_id=${botId}, company_id=${companyId}, user_id=${userId}`);
+              console.log(`   This file was likely uploaded before the upload middleware was working correctly.`);
+            }
           } else {
             console.log(`⚠️ Could not find file with ID ${fileId} for deletion tracking`);
           }
