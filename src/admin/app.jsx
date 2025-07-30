@@ -197,9 +197,19 @@ export default {
           try {
             // Method 1: Check Strapi admin global context
             const globalWindow = window;
+            console.log('🔍 [ADMIN APP] Debugging global context:', {
+              hasStrapi: !!globalWindow.strapi,
+              strapiKeys: globalWindow.strapi ? Object.keys(globalWindow.strapi) : [],
+              hasAdmin: !!(globalWindow.strapi && globalWindow.strapi.admin),
+              adminKeys: (globalWindow.strapi && globalWindow.strapi.admin) ? Object.keys(globalWindow.strapi.admin) : [],
+              // @ts-ignore - Dynamic Strapi admin context
+              hasUser: !!(globalWindow.strapi && globalWindow.strapi.admin && globalWindow.strapi.admin.user),
+            });
+            
             // @ts-ignore - Dynamic Strapi admin context
             if (globalWindow.strapi && 
                 globalWindow.strapi.admin && 
+                // @ts-ignore - Dynamic Strapi admin context property
                 globalWindow.strapi.admin.user) {
               // @ts-ignore - Dynamic Strapi admin context  
               const user = globalWindow.strapi.admin.user;
@@ -239,6 +249,19 @@ export default {
           const pageText = document.body.textContent || '';
           const pageHtml = document.body.innerHTML || '';
           
+          // DEBUG: Log what we find in the page
+          console.log('🔍 [ADMIN APP] DOM debugging:', {
+            bodyTextLength: pageText.length,
+            bodyHtmlLength: pageHtml.length,
+            containsUser: pageText.includes('user') || pageText.includes('User'),
+            containsRole: pageText.includes('role') || pageText.includes('Role'),
+            containsStandard: pageText.includes('standard') || pageText.includes('Standard'),
+            containsAdmin: pageText.includes('admin') || pageText.includes('Admin'),
+            allUserText: pageText.toLowerCase().split(' ').filter(word => word.includes('user')).slice(0, 10),
+            allRoleText: pageText.toLowerCase().split(' ').filter(word => word.includes('role')).slice(0, 10),
+            allStandardText: pageText.toLowerCase().split(' ').filter(word => word.includes('standard')).slice(0, 10)
+          });
+          
           // Look for user role in various UI locations
           const roleSelectors = [
             '[data-testid*="role"]',
@@ -253,21 +276,60 @@ export default {
             // Look in dropdowns and user menus
             '[class*="dropdown"] [class*="role"]',
             '[class*="menu"] [class*="role"]',
-            '[class*="user"] [class*="role"]'
+            '[class*="user"] [class*="role"]',
+            // Try broader selectors
+            '[class*="User"]',
+            '[class*="Profile"]',
+            '[data-testid*="user"]',
+            'header',
+            'nav',
+            '.user',
+            '.profile',
+            // Strapi v5 specific selectors that might contain user info
+            '[class*="MainNav"]',
+            '[class*="LeftMenu"]',
+            '[class*="Header"]'
           ];
           
           let domRoleText = null;
+          const foundElements = [];
+          let foundStandardUser = false;
+          
           for (const selector of roleSelectors) {
-            const element = document.querySelector(selector);
-            if (element && element.textContent) {
-              domRoleText = element.textContent.trim();
-              if (domRoleText.includes('Standard User')) {
-                detectionMethod = `dom_selector_${selector}`;
-                console.log('✅ [ADMIN APP] Found Standard User role via DOM selector:', selector, domRoleText);
-                break;
+            if (foundStandardUser) break;
+            
+            const elements = document.querySelectorAll(selector);
+            for (let index = 0; index < elements.length; index++) {
+              const element = elements[index];
+              if (element && element.textContent) {
+                const text = element.textContent.trim();
+                foundElements.push({
+                  selector,
+                  index,
+                  text: text.substring(0, 100), // Limit text length for logging
+                  hasStandardUser: text.includes('Standard User'),
+                  hasRole: text.toLowerCase().includes('role'),
+                  hasUser: text.toLowerCase().includes('user')
+                });
+                
+                if (text.includes('Standard User')) {
+                  domRoleText = text;
+                  detectionMethod = `dom_selector_${selector}`;
+                  console.log('✅ [ADMIN APP] Found Standard User role via DOM selector:', selector, text);
+                  foundStandardUser = true;
+                  break;
+                }
               }
             }
           }
+          
+          console.log('🔍 [ADMIN APP] DOM element scan results:', {
+            totalElementsFound: foundElements.length,
+            elementsWithRole: foundElements.filter(el => el.hasRole).length,
+            elementsWithUser: foundElements.filter(el => el.hasUser).length,
+            elementsWithStandardUser: foundElements.filter(el => el.hasStandardUser).length,
+            sampleElements: foundElements.slice(0, 5) // Show first 5 elements found
+          });
           
           // Look for role information in the user profile/settings area
           const profileSelectors = [
@@ -275,17 +337,41 @@ export default {
             '[class*="topbar"] [class*="user"]',
             '[class*="navbar"] [class*="user"]',
             '[data-testid*="user"]',
-            '[aria-label*="user"]'
+            '[aria-label*="user"]',
+            // Try more specific Strapi selectors
+            'header',
+            'nav',
+            '[role="banner"]',
+            '[role="navigation"]'
           ];
           
+          const profileElements = [];
           for (const selector of profileSelectors) {
             const profileArea = document.querySelector(selector);
-            if (profileArea && profileArea.textContent && profileArea.textContent.includes('Standard User')) {
-              detectionMethod = `profile_${selector}`;
-              console.log('✅ [ADMIN APP] Found Standard User role in profile area:', selector);
-              break;
+            if (profileArea && profileArea.textContent) {
+              const text = profileArea.textContent.trim();
+              profileElements.push({
+                selector,
+                text: text.substring(0, 200),
+                hasStandardUser: text.includes('Standard User'),
+                hasRole: text.toLowerCase().includes('role'),
+                hasUser: text.toLowerCase().includes('user')
+              });
+              
+              if (text.includes('Standard User')) {
+                detectionMethod = `profile_${selector}`;
+                console.log('✅ [ADMIN APP] Found Standard User role in profile area:', selector);
+                break;
+              }
             }
           }
+          
+          console.log('🔍 [ADMIN APP] Profile area scan results:', {
+            totalProfileElements: profileElements.length,
+            profileElementsWithUser: profileElements.filter(el => el.hasUser).length,
+            profileElementsWithRole: profileElements.filter(el => el.hasRole).length,
+            sampleProfileElements: profileElements.slice(0, 3)
+          });
           
           // Check for standard user indicators (role-based approach only)
           const isStandardUser = 
