@@ -82,30 +82,41 @@ module.exports = (config, { strapi }) => {
             if (!adminJwtService) {
               throw new Error('Admin JWT service not available');
             }
-            const adminPayload = await adminJwtService.decodeJwtToken(token);
-            console.log('🔍 Admin JWT Service payload:', JSON.stringify(adminPayload, null, 2));
+            const jwtResult = await adminJwtService.decodeJwtToken(token);
+            console.log('🔍 Admin JWT Service result:', JSON.stringify(jwtResult, null, 2));
             
-            // If this doesn't work, try alternative method
-            if (!adminPayload?.id && !adminPayload?.user?.id) {
-              throw new Error('Admin JWT payload missing expected fields');
+            // Extract the actual payload (Admin JWT Service returns {payload: {...}, isValid: true})
+            const adminPayload = jwtResult?.payload || jwtResult;
+            const adminId = adminPayload?.id;
+            
+            if (!adminId) {
+              throw new Error('Admin JWT payload missing ID field');
             }
             
-            console.log('✅ Admin JWT verified (Method 1):', { id: adminPayload?.id, email: adminPayload?.email });
+            console.log('✅ Admin JWT verified (Method 1):', { id: adminId });
+            console.log('🔄 Looking up admin user by ID (Method 1)...');
             
-            // Find corresponding users-permissions user
-            const adminEmail = adminPayload?.email || adminPayload?.user?.email;
-            console.log('🔍 Extracted admin email:', adminEmail);
+            // Look up the admin user to get their email
+            const adminUser = await strapi.entityService.findOne('admin::user', adminId);
+            const adminEmail = adminUser?.email;
+            console.log('🔍 Found admin user email (Method 1):', adminEmail);
             
             if (adminEmail) {
+              // Find corresponding users-permissions user
               const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
                 filters: { email: adminEmail },
                 limit: 1,
                 populate: ['company']
               });
               user = users[0];
-              console.log('✅ Found users-permissions user for admin:', user?.email || 'null');
+              console.log('✅ Found users-permissions user for admin (Method 1):', user?.email || 'null');
+              
+              // Skip alternative methods if we found a user
+              if (user) {
+                throw new Error('SUCCESS_WITH_ADMIN_JWT_METHOD1'); // Use error to break out of try-catch chain
+              }
             } else {
-              console.log('❌ No email found in admin JWT payload');
+              console.log('❌ Admin user found but no email (Method 1)');
             }
                       } catch (adminError) {
               console.log('⚠️ Admin JWT Service failed:', adminError.message);
@@ -122,25 +133,36 @@ module.exports = (config, { strapi }) => {
                 console.log('🔍 Alternative admin JWT payload:', JSON.stringify(adminPayload, null, 2));
                 console.log('✅ Admin JWT verified (Method 2):', { id: adminPayload?.id, email: adminPayload?.email });
                 
-                // Extract admin email
-                const adminEmail = adminPayload?.email || adminPayload?.user?.email;
-                console.log('🔍 Extracted admin email (Method 2):', adminEmail);
+                // Admin JWT only contains ID, so look up the admin user by ID
+                const adminId = adminPayload?.id;
+                console.log('🔍 Admin ID from JWT:', adminId);
                 
-                if (adminEmail) {
-                  const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
-                    filters: { email: adminEmail },
-                    limit: 1,
-                    populate: ['company']
-                  });
-                  user = users[0];
-                  console.log('✅ Found users-permissions user for admin (Method 2):', user?.email || 'null');
+                if (adminId) {
+                  console.log('🔄 Looking up admin user by ID...');
+                  // Look up the admin user to get their email
+                  const adminUser = await strapi.entityService.findOne('admin::user', adminId);
+                  const adminEmail = adminUser?.email;
+                  console.log('🔍 Found admin user email:', adminEmail);
                   
-                  // Skip users-permissions JWT if we found a user
-                  if (user) {
-                    throw new Error('SUCCESS_WITH_ADMIN_JWT_METHOD2'); // Use error to break out of try-catch chain
+                  if (adminEmail) {
+                    // Now find the corresponding users-permissions user
+                    const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+                      filters: { email: adminEmail },
+                      limit: 1,
+                      populate: ['company']
+                    });
+                    user = users[0];
+                    console.log('✅ Found users-permissions user for admin (Method 2):', user?.email || 'null');
+                    
+                    // Skip users-permissions JWT if we found a user
+                    if (user) {
+                      throw new Error('SUCCESS_WITH_ADMIN_JWT_METHOD2'); // Use error to break out of try-catch chain
+                    }
+                  } else {
+                    console.log('❌ Admin user found but no email');
                   }
                 } else {
-                  console.log('❌ No email found in alternative admin JWT payload');
+                  console.log('❌ No admin ID found in JWT payload');
                 }
               } catch (altAdminError) {
                 if (altAdminError.message === 'SUCCESS_WITH_ADMIN_JWT_METHOD2') {
@@ -149,30 +171,37 @@ module.exports = (config, { strapi }) => {
                 console.log('⚠️ Alternative admin JWT method also failed:', altAdminError.message);
               }
               
-              console.log('⚠️ All admin JWT methods failed, trying users-permissions JWT...');
+                            console.log('⚠️ All admin JWT methods failed, trying users-permissions JWT...');
               
-              // Try users-permissions JWT
-            const userJwtService = strapi.plugins['users-permissions'].services.jwt;
-            const userPayload = userJwtService.verify(token);
-            console.log('🔍 Raw users-permissions JWT payload:', userPayload);
-            console.log('✅ Users-permissions JWT verified:', { id: userPayload?.id });
-            
-            if (userPayload?.id) {
-              // Get user with company populated
-              const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
-                filters: { id: userPayload.id },
-                limit: 1,
-                populate: ['company']
-              });
-              user = users[0];
-              console.log('✅ Found users-permissions user:', user?.email || 'null');
-            } else {
-              console.log('❌ No user ID found in users-permissions JWT payload');
-            }
+              // Try users-permissions JWT (wrap in try-catch to prevent uncaught exceptions)
+              try {
+                const userJwtService = strapi.plugins['users-permissions'].services.jwt;
+                const userPayload = await userJwtService.verify(token);
+                console.log('🔍 Raw users-permissions JWT payload:', userPayload);
+                console.log('✅ Users-permissions JWT verified:', { id: userPayload?.id });
+                
+                if (userPayload?.id) {
+                  // Get user with company populated
+                  const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+                    filters: { id: userPayload.id },
+                    limit: 1,
+                    populate: ['company']
+                  });
+                  user = users[0];
+                  console.log('✅ Found users-permissions user:', user?.email || 'null');
+                } else {
+                  console.log('❌ No user ID found in users-permissions JWT payload');
+                }
+              } catch (userJwtError) {
+                console.log('⚠️ Users-permissions JWT verification failed:', userJwtError.message);
+                console.log('❌ Token is not a valid users-permissions JWT');
+              }
           }
         } catch (authError) {
-          if (authError.message === 'SUCCESS_WITH_ADMIN_JWT_METHOD2') {
-            console.log('✅ Successfully authenticated using alternative admin JWT method');
+          if (authError.message === 'SUCCESS_WITH_ADMIN_JWT_METHOD1') {
+            console.log('✅ Successfully authenticated using Admin JWT Service (Method 1)');
+          } else if (authError.message === 'SUCCESS_WITH_ADMIN_JWT_METHOD2') {
+            console.log('✅ Successfully authenticated using alternative admin JWT method (Method 2)');
           } else {
             console.log('❌ Manual authentication completely failed:', authError.message);
             console.log('❌ Auth error details:', authError);
