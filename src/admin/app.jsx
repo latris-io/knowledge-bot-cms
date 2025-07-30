@@ -547,7 +547,7 @@ export default {
           
           // Only hide if we detect the standard user
           if (isStandardUser) {
-            console.log('🚫 [ADMIN APP] Hiding Content Manager, Settings, and Media Library for Standard User role');
+            console.log('🚫 [ADMIN APP] Hiding Content Manager and Settings for Standard User role');
             console.log('🔧 [ADMIN APP] Detection method used:', detectionMethod);
             
             // Remove any existing style to avoid duplicates
@@ -556,7 +556,7 @@ export default {
               existingStyle.remove();
             }
             
-            // Enhanced CSS with more specific Strapi admin selectors
+            // Enhanced CSS with more specific Strapi admin selectors - ONLY Content Manager and Settings
             const style = document.createElement('style');
             style.setAttribute('data-hide-menu-items', 'true');
             style.textContent = `
@@ -614,45 +614,14 @@ export default {
                 overflow: hidden !important;
               }
               
-              /* MEDIA LIBRARY HIDING - Enhanced Strapi-specific selectors */
-              /* Direct href matches */
-              a[href="/admin/plugins/upload"],
-              a[href*="/plugins/upload"],
-              nav a[href*="plugins/upload"],
-              
-              /* Menu structure matches */
-              [data-strapi*="media"],
-              [data-strapi*="upload"],
-              [class*="MenuItem"] a[href*="/plugins/upload"],
-              [class*="MenuLink"] a[href*="/plugins/upload"],
-              
-              /* Parent containers */
-              li:has(a[href*="/plugins/upload"]),
-              [class*="MenuItem"]:has(a[href*="/plugins/upload"]),
-              [class*="MenuLink"]:has(a[href*="/plugins/upload"]),
-              
-              /* Text-based matching */
-              a:has-text("Media Library"),
-              li:has(a:has-text("Media Library")),
-              [role="menuitem"]:has(a:has-text("Media Library")) {
-                display: none !important; 
-                visibility: hidden !important;
-                opacity: 0 !important;
-                height: 0 !important;
-                overflow: hidden !important;
-              }
-              
-              /* AGGRESSIVE FALLBACK SELECTORS */
+              /* AGGRESSIVE FALLBACK SELECTORS - ONLY Content Manager and Settings */
               /* Catch any remaining instances with generic class/structure patterns */
               [class*="menu"] a[href*="content-manager"],
               [class*="nav"] a[href*="content-manager"],
               [class*="sidebar"] a[href*="content-manager"],
               [class*="menu"] a[href="/admin/settings"],
-              [class*="nav"] a[href="/admin/settings"], 
-              [class*="sidebar"] a[href="/admin/settings"],
-              [class*="menu"] a[href*="/plugins/upload"],
-              [class*="nav"] a[href*="/plugins/upload"],
-              [class*="sidebar"] a[href*="/plugins/upload"] {
+              [class*="nav"] a[href="/admin/settings"],
+              [class*="sidebar"] a[href="/admin/settings"] {
                 display: none !important; 
                 visibility: hidden !important;
                 opacity: 0 !important;
@@ -661,55 +630,46 @@ export default {
               }
             `;
             document.head.appendChild(style);
-            console.log('💉 [ADMIN APP] Enhanced CSS injected to hide Content Manager, Settings, and Media Library');
+            console.log('💉 [ADMIN APP] Enhanced CSS injected to hide Content Manager and Settings');
             
             // Enhanced JavaScript-based hiding function with better Strapi detection
             const hideMenuItemsJS = () => {
-              console.log('🔧 [ADMIN APP] Running enhanced JavaScript menu hiding...');
-              
-              // Get all navigation elements more specifically
-              const navSelectors = [
-                'nav a', 
-                '[role="navigation"] a',
-                '[class*="Menu"] a',
-                '[class*="Nav"] a',
-                '[class*="Sidebar"] a',
-                'aside a',
-                '[data-strapi] a'
-              ];
-              
               let hiddenCount = 0;
               
-              navSelectors.forEach(selector => {
-                const links = document.querySelectorAll(selector);
-                links.forEach(link => {
+              // Find all potential menu links
+              const selectors = [
+                'a[href*="/admin/"]',
+                'nav a',
+                '[role="menuitem"] a',
+                '[class*="menu"] a',
+                '[class*="MenuItem"] a',
+                '[class*="MenuLink"] a'
+              ];
+              
+              selectors.forEach(selector => {
+                document.querySelectorAll(selector).forEach(link => {
                   if (!(link instanceof HTMLElement)) return;
                   
                   const href = link.getAttribute('href') || '';
-                  const text = link.textContent ? link.textContent.trim() : '';
+                  const text = link.textContent?.trim() || '';
                   
-                  // More specific matching logic
+                  // Only hide Content Manager and Settings
                   const isContentManager = 
-                    href.includes('content-manager') || 
+                    href.includes('/content-manager') || 
                     text === 'Content Manager' ||
                     link.getAttribute('data-strapi') === 'content-manager';
-                    
+                  
                   const isSettings = 
                     (href === '/admin/settings' || href === '/admin/settings/') &&
-                    !href.includes('billing') && 
-                    !href.includes('subscription') && 
+                    !href.includes('billing') &&
+                    !href.includes('subscription') &&
                     !href.includes('bot') ||
                     (text === 'Settings' && 
                      !text.includes('Billing') && 
                      !text.includes('Bot') && 
                      !text.includes('Subscription'));
-                    
-                  const isMediaLibrary = 
-                    href.includes('/plugins/upload') || 
-                    text === 'Media Library' ||
-                    link.getAttribute('data-strapi') === 'media-library';
                   
-                  if (isContentManager || isSettings || isMediaLibrary) {
+                  if (isContentManager || isSettings) {
                     // Hide the link itself
                     link.style.display = 'none';
                     link.style.visibility = 'hidden';
