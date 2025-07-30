@@ -246,9 +246,9 @@ export default {
           
           // Only hide if we detect the standard user
           if (isStandardUser) {
-            console.log('🚫 [ADMIN APP] Hiding Content Manager and Settings for Standard User role');
+            console.log('🚫 [ADMIN APP] Hiding Content Manager, Settings, and Media Library for Standard User role');
             
-            // Improved CSS to hide Content Manager and Settings
+            // Improved CSS to hide Content Manager, Settings, and Media Library
             const style = document.createElement('style');
             style.setAttribute('data-hide-menu-items', 'true');
             style.textContent = `
@@ -288,19 +288,40 @@ export default {
                 visibility: hidden !important;
               }
               
+              /* Hide Media Library - Multiple selector approaches */
+              a[href="/admin/plugins/upload"],
+              a[href*="/plugins/upload"],
+              [href*="/plugins/upload"],
+              nav a[href*="plugins/upload"],
+              [data-testid*="media-library"],
+              a:has-text("Media Library") { 
+                display: none !important; 
+                visibility: hidden !important;
+              }
+              
+              /* Hide parent list items */
+              li:has(a[href*="/plugins/upload"]),
+              nav li:has(a[href*="/plugins/upload"]) { 
+                display: none !important; 
+                visibility: hidden !important;
+              }
+              
               /* More aggressive selectors */
               [class*="menu"] a[href*="content-manager"],
               [class*="nav"] a[href*="content-manager"],
               [class*="sidebar"] a[href*="content-manager"],
               [class*="menu"] a[href*="/settings"],
               [class*="nav"] a[href*="/settings"],
-              [class*="sidebar"] a[href*="/settings"] {
+              [class*="sidebar"] a[href*="/settings"],
+              [class*="menu"] a[href*="/plugins/upload"],
+              [class*="nav"] a[href*="/plugins/upload"],
+              [class*="sidebar"] a[href*="/plugins/upload"] {
                 display: none !important; 
                 visibility: hidden !important;
               }
             `;
             document.head.appendChild(style);
-            console.log('💉 [ADMIN APP] CSS injected to hide Content Manager and Settings');
+            console.log('💉 [ADMIN APP] CSS injected to hide Content Manager, Settings, and Media Library');
             
             // Enhanced JavaScript-based hiding function
             const hideMenuItemsJS = () => {
@@ -315,11 +336,12 @@ export default {
                 const href = (link instanceof HTMLAnchorElement ? link.href : link.getAttribute('href')) || '';
                 const text = link.textContent ? link.textContent.trim() : '';
                 
-                // Check if this is a Content Manager or Settings link
+                // Check if this is a Content Manager, Settings, or Media Library link
                 const isContentManager = href.includes('content-manager') || text === 'Content Manager';
                 const isSettings = href.includes('/settings') && !href.includes('subscription') && !href.includes('billing') || text === 'Settings';
+                const isMediaLibrary = href.includes('/plugins/upload') || text === 'Media Library';
                 
-                if (isContentManager || isSettings) {
+                if (isContentManager || isSettings || isMediaLibrary) {
                   // Hide the link (with type checking)
                   if (link instanceof HTMLElement) {
                     link.style.display = 'none';
@@ -383,7 +405,7 @@ export default {
             setTimeout(hideMenuItemsJS, 3000);
             setTimeout(hideMenuItemsJS, 5000);
         } else {
-            console.log('✅ [ADMIN APP] Not Standard User role - Content Manager and Settings remain visible');
+            console.log('✅ [ADMIN APP] Not Standard User role - Content Manager, Settings, and Media Library remain visible');
         }
       } catch (error) {
           console.error('❌ [ADMIN APP] Error in hideMenuItemsForStandardUsers:', error);
