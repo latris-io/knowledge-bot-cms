@@ -182,109 +182,162 @@ export default {
     // Inject widget scripts immediately
     injectAiBotWidget();
     
-    // Simple approach: hide Content Manager and Settings for non-admin users
+    // Improved approach: hide Content Manager and Settings for Standard User role
     const hideMenuItemsForStandardUsers = () => {
       console.log('🔍 [ADMIN APP] Checking if menu items should be hidden...');
       
       // Wait a bit for the admin panel to fully load
       setTimeout(() => {
         try {
-          // Check if we can find any indication this is a standard user
-          // Look for user info in the DOM or check the current user's email
-          const userInfoElements = document.querySelectorAll('[data-testid*="user"], [class*="user-info"], [aria-label*="user"]');
-          console.log('👤 [ADMIN APP] Found user elements:', userInfoElements.length);
-          
-          // Get all text content from the page to look for email addresses
+          // Multiple detection methods for better reliability
           const pageText = document.body.textContent || '';
+          const pageHtml = document.body.innerHTML || '';
           
-          // Check if this is the standard user
-          const isStandardUser = pageText.includes('martybremer@icloud.com');
+          // Check for standard user indicators
+          const isStandardUser = pageText.includes('martybremer@icloud.com') || 
+                                pageText.includes('Standard User') ||
+                                pageHtml.includes('martybremer@icloud.com');
+          
           console.log('🎭 [ADMIN APP] Standard user detected:', isStandardUser);
           
-          // Only hide if we specifically detect the standard user
+          // Only hide if we detect the standard user
           if (isStandardUser) {
             console.log('🚫 [ADMIN APP] Hiding Content Manager and Settings for standard user');
             
-            // Inject CSS to hide Content Manager and Settings
+            // Improved CSS to hide Content Manager and Settings
             const style = document.createElement('style');
             style.setAttribute('data-hide-menu-items', 'true');
             style.textContent = `
-              /* Hide Content Manager menu for standard users */
-              a[href="/admin/content-manager"] { display: none !important; }
-              a[href*="/content-manager"] { display: none !important; }
-              li:has(a[href*="content-manager"]) { display: none !important; }
+              /* Hide Content Manager - Multiple selector approaches */
+              a[href="/admin/content-manager"],
+              a[href*="/content-manager"],
+              [href*="/content-manager"],
+              nav a[href*="content-manager"],
+              [data-testid*="content-manager"],
+              a:has-text("Content Manager") { 
+                display: none !important; 
+                visibility: hidden !important;
+              }
               
-              /* Hide Settings menu for standard users */
-              a[href="/admin/settings"] { display: none !important; }
-              a[href*="/settings"] { display: none !important; }
-              li:has(a[href*="/settings"]) { display: none !important; }
+              /* Hide parent list items */
+              li:has(a[href*="content-manager"]),
+              nav li:has(a[href*="content-manager"]) { 
+                display: none !important; 
+                visibility: hidden !important;
+              }
               
-              /* More specific selectors */
-              nav a[href*="content-manager"] { display: none !important; }
-              nav li:has(a[href*="content-manager"]) { display: none !important; }
-              nav a[href*="/settings"] { display: none !important; }
-              nav li:has(a[href*="/settings"]) { display: none !important; }
-              [data-testid*="content-manager"] { display: none !important; }
-              [data-testid*="settings"] { display: none !important; }
+              /* Hide Settings - Multiple selector approaches */
+              a[href="/admin/settings"],
+              a[href*="/settings"],
+              [href*="/settings"],
+              nav a[href*="/settings"],
+              [data-testid*="settings"],
+              a:has-text("Settings") { 
+                display: none !important; 
+                visibility: hidden !important;
+              }
               
-              /* Hide by text content */
-              a:has-text("Content Manager") { display: none !important; }
-              a:has-text("Settings") { display: none !important; }
+              /* Hide parent list items */
+              li:has(a[href*="/settings"]),
+              nav li:has(a[href*="/settings"]) { 
+                display: none !important; 
+                visibility: hidden !important;
+              }
+              
+              /* More aggressive selectors */
+              [class*="menu"] a[href*="content-manager"],
+              [class*="nav"] a[href*="content-manager"],
+              [class*="sidebar"] a[href*="content-manager"],
+              [class*="menu"] a[href*="/settings"],
+              [class*="nav"] a[href*="/settings"],
+              [class*="sidebar"] a[href*="/settings"] {
+                display: none !important; 
+                visibility: hidden !important;
+              }
             `;
             document.head.appendChild(style);
             console.log('💉 [ADMIN APP] CSS injected to hide Content Manager and Settings');
             
-            // JavaScript-based hiding function
+            // Enhanced JavaScript-based hiding function
             const hideMenuItemsJS = () => {
-              const allLinks = document.querySelectorAll('a');
+              console.log('🔧 [ADMIN APP] Running JavaScript menu hiding...');
+              
+              // Find all links and check them
+              const allLinks = document.querySelectorAll('a, [href]');
+              let hiddenCount = 0;
+              
               allLinks.forEach(link => {
-                // Hide Content Manager
-                if (link.href && link.href.includes('content-manager')) {
-                  link.style.display = 'none';
-                  const parentLi = link.closest('li');
-                  if (parentLi) {
-                    parentLi.style.display = 'none';
-                  }
-                }
-                // Hide Settings
-                if (link.href && link.href.includes('/settings')) {
-                  link.style.display = 'none';
-                  const parentLi = link.closest('li');
-                  if (parentLi) {
-                    parentLi.style.display = 'none';
-                  }
-                }
-                // Also check text content
-                if (link.textContent) {
-                  const text = link.textContent.trim();
-                  if (text === 'Content Manager' || text === 'Settings') {
+                // Type-safe property access
+                const href = (link instanceof HTMLAnchorElement ? link.href : link.getAttribute('href')) || '';
+                const text = link.textContent ? link.textContent.trim() : '';
+                
+                // Check if this is a Content Manager or Settings link
+                const isContentManager = href.includes('content-manager') || text === 'Content Manager';
+                const isSettings = href.includes('/settings') && !href.includes('subscription') && !href.includes('billing') || text === 'Settings';
+                
+                if (isContentManager || isSettings) {
+                  // Hide the link (with type checking)
+                  if (link instanceof HTMLElement) {
                     link.style.display = 'none';
-                    const parentLi = link.closest('li');
-                    if (parentLi) {
-                      parentLi.style.display = 'none';
-                    }
+                    link.style.visibility = 'hidden';
                   }
+                  
+                  // Hide parent elements
+                  const parentLi = link.closest('li');
+                  const parentNav = link.closest('nav');
+                  const parentDiv = link.closest('div[role="menuitem"], div[class*="menu"]');
+                  
+                  if (parentLi instanceof HTMLElement) {
+                    parentLi.style.display = 'none';
+                    parentLi.style.visibility = 'hidden';
+                  }
+                  if (parentDiv instanceof HTMLElement) {
+                    parentDiv.style.display = 'none';
+                    parentDiv.style.visibility = 'hidden';
+                  }
+                  
+                  hiddenCount++;
+                  console.log(`🚫 [ADMIN APP] Hidden: ${text || href}`);
                 }
               });
+              
+              console.log(`🔧 [ADMIN APP] Hidden ${hiddenCount} menu items`);
             };
             
-            // Apply JavaScript hiding
+            // Apply JavaScript hiding immediately
             hideMenuItemsJS();
             
             // Set up observer to catch dynamically added elements
-            const observer = new MutationObserver(() => {
-              hideMenuItemsJS();
+            const observer = new MutationObserver((mutations) => {
+              let shouldCheck = false;
+              mutations.forEach(mutation => {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                  // Check if any added nodes contain links
+                                     mutation.addedNodes.forEach(node => {
+                     if (node.nodeType === Node.ELEMENT_NODE && node instanceof Element) {
+                       const hasLinks = node.tagName === 'A' || node.querySelector('a, [href]');
+                       if (hasLinks) shouldCheck = true;
+                     }
+                   });
+                }
+              });
+              
+              if (shouldCheck) {
+                setTimeout(hideMenuItemsJS, 100);
+              }
             });
             
-          observer.observe(document.body, {
-            childList: true,
-            subtree: true
-          });
+            observer.observe(document.body, {
+              childList: true,
+              subtree: true
+            });
 
-            // Also apply after delays to catch late-loading elements
+            // Apply with multiple delays to catch different loading stages
             setTimeout(hideMenuItemsJS, 500);
             setTimeout(hideMenuItemsJS, 1000);
             setTimeout(hideMenuItemsJS, 2000);
+            setTimeout(hideMenuItemsJS, 3000);
+            setTimeout(hideMenuItemsJS, 5000);
         } else {
             console.log('✅ [ADMIN APP] Not standard user - Content Manager and Settings remain visible');
         }
