@@ -242,6 +242,15 @@ module.exports = (config, { strapi }) => {
         return;
       }
       
+      // Add email notification toast message to response
+      const fileCount = filesToProcess.length;
+      const fileWord = fileCount === 1 ? 'file' : 'files';
+      
+      ctx.response.body = {
+        data: ctx.response.body,
+        message: `Your ${fileWord} will be processed and you'll receive an email notification when ready.`
+      };
+      
       // Process each uploaded file
       for (const file of filesToProcess) {
         console.log('📁 Processing file:', file);
