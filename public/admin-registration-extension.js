@@ -23,8 +23,11 @@
     'zoho.com', 'mail.com', 'gmx.com', 'gmx.net', 'web.de',
     'fastmail.com', 'runbox.com', 'hushmail.com',
     
-    // Educational (generic)
+    // Educational institutions - .edu domains not allowed
     'student.com', 'alumni.com', 'education.com',
+    
+    // All .edu domains (educational institutions)
+    // Note: We'll also check for .edu suffix dynamically
     
     // Mobile/Telecom providers
     'verizon.net', 'att.net', 'comcast.net', 'charter.net', 'cox.net',
@@ -46,9 +49,22 @@
            document.querySelector('h1')?.textContent?.includes('Welcome');
   }
 
-  // Check if email domain is generic (consumer email provider)
+  // Check if email domain is generic (consumer email provider) or .edu
   function isGenericEmailDomain(domain) {
-    return GENERIC_EMAIL_DOMAINS.includes(domain.toLowerCase());
+    const lowerDomain = domain.toLowerCase();
+    
+    // Check if it's in our generic domains list
+    if (GENERIC_EMAIL_DOMAINS.includes(lowerDomain)) {
+      return true;
+    }
+    
+    // Check if it's a .edu domain (educational institutions not allowed)
+    if (lowerDomain.endsWith('.edu')) {
+      console.log(`🚫 [SECURITY] .edu domain detected: ${domain} - educational institutions not allowed`);
+      return true;
+    }
+    
+    return false;
   }
 
   // Promise-based form detection - no timers!
