@@ -200,17 +200,143 @@ export default {
           const pageText = document.body.textContent || '';
           const pageHtml = document.body.innerHTML || '';
           
-          // Simple, direct detection
-          const isStandardUser = 
-            pageText.includes('Standard User') ||
-            pageHtml.includes('Standard User') ||
-            pageText.includes('standard-user') ||
-            pageHtml.includes('standard-user');
+          // Comprehensive role detection for production environments
+          const detectStandardUser = () => {
+            let detectionMethod = 'none';
+            let detectionDetails = {};
+            
+            // Method 1: Check Strapi admin context
+            try {
+              // @ts-ignore - Dynamic Strapi admin context
+              if (window.strapi?.admin?.user) {
+                // @ts-ignore - Dynamic Strapi admin context
+                const user = window.strapi.admin.user;
+                detectionDetails.strapiContext = user;
+                if (user.roles && Array.isArray(user.roles)) {
+                  const hasStandardRole = user.roles.some(role => 
+                    role.name === 'Standard User' || 
+                    role.code === 'standard-user' ||
+                    role.type === 'standard-user' ||
+                    role.name?.toLowerCase().includes('standard')
+                  );
+                  if (hasStandardRole) {
+                    detectionMethod = 'strapi-context';
+                    return { isStandardUser: true, detectionMethod, detectionDetails };
+                  }
+                }
+              }
+            } catch (e) {
+              console.log('⚠️ [ADMIN APP] Strapi context check failed:', e);
+            }
+            
+            // Method 2: Check localStorage for user/role data
+            try {
+              const storageKeys = ['strapi-user', 'strapi-jwt-token', 'user-role', 'currentUser'];
+              for (const key of storageKeys) {
+                const data = localStorage.getItem(key);
+                if (data) {
+                  detectionDetails[`localStorage_${key}`] = data.substring(0, 100);
+                  if (data.toLowerCase().includes('standard')) {
+                    detectionMethod = `localStorage-${key}`;
+                    return { isStandardUser: true, detectionMethod, detectionDetails };
+                  }
+                }
+              }
+            } catch (e) {
+              console.log('⚠️ [ADMIN APP] localStorage check failed:', e);
+            }
+            
+            // Method 3: Check for API response patterns
+            try {
+              // Check if there are any script tags with role data
+              const scripts = document.querySelectorAll('script');
+              for (const script of scripts) {
+                const content = script.textContent || '';
+                if (content.includes('Standard User') || content.includes('standard-user')) {
+                  detectionMethod = 'script-content';
+                  detectionDetails.scriptContent = content.substring(0, 200);
+                  return { isStandardUser: true, detectionMethod, detectionDetails };
+                }
+              }
+            } catch (e) {
+              console.log('⚠️ [ADMIN APP] Script content check failed:', e);
+            }
+            
+            // Method 4: Check DOM patterns for role indicators
+            try {
+              // Look for user profile elements
+              const roleSelectors = [
+                '[data-testid*="profile"]', '[class*="profile"]',
+                '[data-testid*="user"]', '[class*="user"]', 
+                'header [class*="dropdown"]', '.navbar [role="button"]'
+              ];
+              
+              for (const selector of roleSelectors) {
+                const elements = document.querySelectorAll(selector);
+                for (const element of elements) {
+                  const text = element.textContent?.toLowerCase() || '';
+                  const title = (element instanceof HTMLElement) ? element.title?.toLowerCase() || '' : '';
+                  const ariaLabel = element.getAttribute('aria-label')?.toLowerCase() || '';
+                  
+                  if (text.includes('standard') || title.includes('standard') || ariaLabel.includes('standard')) {
+                    detectionMethod = `dom-${selector}`;
+                    detectionDetails.elementText = element.textContent?.substring(0, 100);
+                    return { isStandardUser: true, detectionMethod, detectionDetails };
+                  }
+                }
+              }
+            } catch (e) {
+              console.log('⚠️ [ADMIN APP] DOM pattern check failed:', e);
+            }
+            
+            // Method 5: Check permissions/menu restrictions as proxy
+            try {
+              // If user can't see certain admin features, they might be Standard User
+              const adminLinks = document.querySelectorAll('a[href*="/admin/"]');
+              const linkTexts = Array.from(adminLinks).map(link => link.textContent?.trim().toLowerCase()).filter(Boolean);
+              
+              detectionDetails.availableLinks = linkTexts;
+              
+              // Standard users typically have restricted access
+              const hasContentManager = linkTexts.some(text => text.includes('content'));
+              const hasSettings = linkTexts.some(text => text.includes('settings'));
+              const hasUserManagement = linkTexts.some(text => text.includes('user'));
+              
+              // If they have very limited links, they might be Standard User
+              if (adminLinks.length < 5 && !hasSettings) {
+                detectionMethod = 'permission-restriction';
+                return { isStandardUser: true, detectionMethod, detectionDetails };
+              }
+            } catch (e) {
+              console.log('⚠️ [ADMIN APP] Permission check failed:', e);
+            }
+            
+            // Method 6: Original text-based detection (fallback)
+            const hasStandardText = pageText.includes('Standard User') || pageHtml.includes('Standard User');
+            const hasStandardSlug = pageText.includes('standard-user') || pageHtml.includes('standard-user');
+            
+            if (hasStandardText || hasStandardSlug) {
+              detectionMethod = 'text-pattern';
+              detectionDetails.textMatch = hasStandardText ? 'Standard User' : 'standard-user';
+              return { isStandardUser: true, detectionMethod, detectionDetails };
+            }
+            
+            return { isStandardUser: false, detectionMethod, detectionDetails };
+          };
           
-          console.log('🎭 [ADMIN APP] User role detection results:', {
+          const { isStandardUser, detectionMethod, detectionDetails } = detectStandardUser();
+          
+          console.log('🎭 [ADMIN APP] Comprehensive role detection results:', {
             isStandardUser,
-            hasStandardUserText: pageText.includes('Standard User'),
-            hasStandardUserHtml: pageHtml.includes('Standard User')
+            detectionMethod,
+            detectionDetails: Object.keys(detectionDetails).length > 0 ? detectionDetails : 'none',
+            basicChecks: {
+              hasStandardUserText: pageText.includes('Standard User'),
+              hasStandardUserHtml: pageHtml.includes('Standard User'),
+              // @ts-ignore - Dynamic Strapi admin context  
+              strapiContextExists: !!window.strapi?.admin?.user,
+              localStorageKeys: Object.keys(localStorage).filter(k => k.includes('strapi') || k.includes('user'))
+            }
           });
           
           if (isStandardUser) {
