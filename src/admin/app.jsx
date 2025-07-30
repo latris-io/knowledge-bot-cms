@@ -341,8 +341,8 @@ export default {
             let style = document.querySelector('style[data-hide-menu-items="true"]');
             if (!style) {
               style = document.createElement('style');
-              style.setAttribute('data-hide-menu-items', 'true');
-              style.textContent = `
+            style.setAttribute('data-hide-menu-items', 'true');
+            style.textContent = `
                 /* Hide Content Manager and Settings for Standard Users */
                 a[href="/admin/content-manager"],
                 a[href*="/content-manager"],
@@ -433,13 +433,13 @@ export default {
             console.log('❌ [ADMIN APP] Error in role detection:', error);
           });
         }
-      });
-      
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
-      
+            });
+            
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true
+          });
+
       // Set up storage event listener for auth changes
       window.addEventListener('storage', (event) => {
         // Check if any JWT-like token was set (contains dots like JWT tokens)

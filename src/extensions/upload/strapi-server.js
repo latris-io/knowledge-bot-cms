@@ -19,6 +19,10 @@ module.exports = (plugin) => {
   
   plugin.services.upload = ({ strapi }) => {
     const baseService = defaultUploadService({ strapi });
+    
+    // Add AWS SDK imports for S3 deletion
+    const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+    const { fromEnv } = require('@aws-sdk/credential-provider-env');
 
     return {
       ...baseService,
@@ -287,6 +291,38 @@ module.exports = (plugin) => {
           }
         } catch (eventError) {
           console.error('❌ Failed to log file deletion event:', eventError);
+        }
+        
+        // Add S3 deletion logic (restored from backup) - only in production
+        if (process.env.NODE_ENV === 'production') {
+          try {
+            console.log('[S3] 🔧 Production environment detected - attempting S3 deletion...');
+            
+            // Initialize AWS S3 client
+            const s3 = new S3Client({
+              region: process.env.AWS_REGION,
+              credentials: fromEnv(),
+            });
+            
+            // Construct S3 key from file data
+            const s3Key = file.storage_key || `${file.hash}${file.ext}`;
+            console.log(`[S3] 🗑️ Attempting to delete from bucket: ${process.env.AWS_BUCKET_NAME}, key: ${s3Key}`);
+            
+            // Delete from S3
+            const deleteResult = await s3.send(new DeleteObjectCommand({
+              Bucket: process.env.AWS_BUCKET_NAME,
+              Key: s3Key,
+            }));
+            
+            console.log(`[S3] ✅ S3 deletion response:`, deleteResult);
+            
+          } catch (s3Error) {
+            console.error('🔴 [S3] Failed to delete from S3:', s3Error.message);
+            // Don't throw error - still allow DB deletion to proceed
+            console.log('⚠️ [S3] Continuing with database deletion despite S3 error...');
+          }
+        } else {
+          console.log('[S3] 🔧 Development environment - skipping S3 deletion');
         }
         
         // Call the original remove method

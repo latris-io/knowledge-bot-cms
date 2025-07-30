@@ -357,8 +357,8 @@
             domainCompany = domainResult.company;
             companyInput.value = domainResult.company.name;
             companyInput.setAttribute('disabled', 'true');
-            companyInput.style.backgroundColor = '#f6f6f9';
-            companyInput.style.cursor = 'not-allowed';
+          companyInput.style.backgroundColor = '#f6f6f9';
+          companyInput.style.cursor = 'not-allowed';
             selectedCompany = domainResult.company;
             
             showCompanyInfo('Company auto-assigned based on your email domain', 'info');
@@ -521,7 +521,7 @@
         console.log('✅ [SECURITY] Using auto-assigned company:', data.companyName);
       } else {
         showFieldError('companyName', 'Company name is required.');
-        hasErrors = true;
+      hasErrors = true;
       }
     } else {
       // For manual entry, validate uniqueness one final time
@@ -596,7 +596,7 @@
 
         // Redirect to login after a brief delay
         setTimeout(() => {
-          window.location.href = '/admin/auth/login';
+        window.location.href = '/admin/auth/login';
         }, 1000);
       } else {
         console.error('❌ Registration failed:', result);
@@ -719,7 +719,7 @@
     waitForRegistrationForm()
       .then(form => {
         console.log('✅ Form detected, extending with SECURE MULTI-TENANT logic');
-        extendRegistrationForm(form);
+              extendRegistrationForm(form);
       })
       .catch(error => {
         console.log('❌ Form detection failed:', error.message);
