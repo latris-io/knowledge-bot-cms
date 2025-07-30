@@ -206,6 +206,81 @@ export default {
               hasUser: !!(globalWindow.strapi && globalWindow.strapi.admin && globalWindow.strapi.admin.user),
             });
             
+            // DEEP DEBUGGING: Inspect the actual Strapi object structure
+            if (globalWindow.strapi) {
+              console.log('🔍 [ADMIN APP] Full Strapi object structure:', globalWindow.strapi);
+              
+              // Check all possible locations for user/admin context
+              const possibleUserLocations = [
+                'strapi.admin.user',
+                'strapi.user', 
+                'strapi.currentUser',
+                'strapi.auth.user',
+                'strapi.store.user',
+                'strapi.plugins.users-permissions.user'
+              ];
+              
+              possibleUserLocations.forEach(path => {
+                try {
+                  const pathParts = path.split('.');
+                  let current = globalWindow;
+                  for (const part of pathParts) {
+                    current = current[part];
+                    if (!current) break;
+                  }
+                  if (current) {
+                    console.log(`✅ [ADMIN APP] Found user context at ${path}:`, current);
+                  }
+                } catch (e) {
+                  // Silent fail for dynamic property access
+                }
+              });
+            }
+            
+            // Check alternative global locations for user context
+            const alternativeLocations = [
+              'window.__STRAPI_USER__',
+              'window.__ADMIN_USER__', 
+              'window.__AUTH_USER__',
+              'window.APP_STATE',
+              'window.INITIAL_STATE'
+            ];
+            
+            alternativeLocations.forEach(path => {
+              try {
+                // @ts-ignore - Dynamic property access
+                const value = eval(path);
+                if (value) {
+                  console.log(`✅ [ADMIN APP] Found user context at ${path}:`, value);
+                }
+              } catch (e) {
+                // Silent fail
+              }
+            });
+            
+            // Check localStorage and sessionStorage for user/auth info
+            const storageKeys = [
+              'strapi-jwt-token',
+              'strapi-user',
+              'strapi-admin-user',
+              'admin-user',
+              'user',
+              'auth-user',
+              'currentUser'
+            ];
+            
+            console.log('🔍 [ADMIN APP] Storage debugging:');
+            storageKeys.forEach(key => {
+              const localValue = localStorage.getItem(key);
+              const sessionValue = sessionStorage.getItem(key);
+              if (localValue) {
+                console.log(`📦 localStorage['${key}']:`, localValue.substring(0, 100) + '...');
+              }
+              if (sessionValue) {
+                console.log(`📦 sessionStorage['${key}']:`, sessionValue.substring(0, 100) + '...');
+              }
+            });
+            
             // @ts-ignore - Dynamic Strapi admin context
             if (globalWindow.strapi && 
                 globalWindow.strapi.admin && 
@@ -671,5 +746,51 @@ export default {
     hideMenuItemsForStandardUsers();
     setTimeout(hideMenuItemsForStandardUsers, 2000);
     setTimeout(hideMenuItemsForStandardUsers, 3000);
+    setTimeout(hideMenuItemsForStandardUsers, 5000);
+    setTimeout(hideMenuItemsForStandardUsers, 10000);
+    
+    // Additional approach: Wait for page to be fully loaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(hideMenuItemsForStandardUsers, 1000);
+        setTimeout(hideMenuItemsForStandardUsers, 3000);
+      });
+    }
+    
+    // Additional approach: Wait for window load event  
+    window.addEventListener('load', () => {
+      setTimeout(hideMenuItemsForStandardUsers, 2000);
+      setTimeout(hideMenuItemsForStandardUsers, 5000);
+    });
+    
+    // Additional approach: Keep checking until we find user context
+    let userContextCheckAttempts = 0;
+    const maxUserContextAttempts = 20; // 20 attempts over 40 seconds
+    
+    const waitForUserContext = () => {
+      userContextCheckAttempts++;
+      console.log(`🔍 [ADMIN APP] User context check attempt ${userContextCheckAttempts}/${maxUserContextAttempts}`);
+      
+      // Check if we have any user context now
+      const hasUserContext = !!(
+        // @ts-ignore - Dynamic Strapi admin context
+        (window.strapi && window.strapi.admin && window.strapi.admin.user) ||
+        document.body.textContent?.includes('Standard User') ||
+        document.body.textContent?.includes('user') ||
+        localStorage.getItem('strapi-jwt-token')
+      );
+      
+      if (hasUserContext) {
+        console.log('✅ [ADMIN APP] User context found, running menu hiding...');
+        hideMenuItemsForStandardUsers();
+      } else if (userContextCheckAttempts < maxUserContextAttempts) {
+        setTimeout(waitForUserContext, 2000); // Check every 2 seconds
+      } else {
+        console.log('⚠️ [ADMIN APP] Max user context check attempts reached, giving up');
+      }
+    };
+    
+    // Start checking for user context
+    setTimeout(waitForUserContext, 3000);
   }
 }; 
