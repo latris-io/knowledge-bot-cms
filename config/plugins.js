@@ -41,34 +41,40 @@ module.exports = ({ env }) => {
     baseConfig.config.provider = 'local';
   }
 
+  // Debug email configuration
+  const emailConfig = {
+    config: {
+      provider: isProduction ? 'nodemailer' : 'sendmail',
+      providerOptions: isProduction ? {
+        // Production SMTP configuration
+        host: env('SMTP_HOST', 'smtp.gmail.com'),
+        port: env.int('SMTP_PORT', 587),
+        auth: {
+          user: env('SMTP_USERNAME'),
+          pass: env('SMTP_PASSWORD'),
+        },
+        secure: false, // true for 465, false for other ports
+      } : {
+        // Development sendmail configuration
+        dkim: false,
+        host: 'localhost',
+        port: 1025,
+      },
+      settings: {
+        defaultFrom: env('DEFAULT_FROM_EMAIL', env('SMTP_USERNAME')),
+        defaultReplyTo: env('DEFAULT_REPLY_TO_EMAIL', env('SMTP_USERNAME'))
+      }
+    }
+  };
+
+  console.log('🔧 [PLUGINS] Email config being returned:', JSON.stringify(emailConfig, null, 2));
+  console.log('🔧 [PLUGINS] isProduction:', isProduction);
+  
   return {
     upload: baseConfig,
     
     // Add email provider configuration
-    email: {
-      config: {
-        provider: isProduction ? 'nodemailer' : 'sendmail',
-        providerOptions: isProduction ? {
-          // Production SMTP configuration
-          host: env('SMTP_HOST', 'smtp.gmail.com'),
-          port: env.int('SMTP_PORT', 587),
-          auth: {
-            user: env('SMTP_USERNAME'),
-            pass: env('SMTP_PASSWORD'),
-          },
-          secure: false, // true for 465, false for other ports
-        } : {
-          // Development sendmail configuration
-          dkim: false,
-          host: 'localhost',
-          port: 1025,
-        },
-        settings: {
-          defaultFrom: env('DEFAULT_FROM_EMAIL', 'noreply@localhost'),
-          defaultReplyTo: env('DEFAULT_REPLY_TO_EMAIL', 'noreply@localhost')
-        }
-      }
-    },
+    email: emailConfig,
     
     // Configure users-permissions plugin for email verification
     'users-permissions': {
