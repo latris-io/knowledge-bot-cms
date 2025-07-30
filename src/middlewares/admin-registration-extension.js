@@ -465,9 +465,13 @@ module.exports = (config, { strapi }) => {
                     console.log('  - SMTP_PASSWORD:', process.env.SMTP_PASSWORD ? 'SET' : 'NOT SET');
                     console.log('  - NODE_ENV:', process.env.NODE_ENV);
                     
+                    // Use SMTP_USERNAME as from address to avoid Office 365 SendAsDenied error
+                    const fromEmail = strapi.config.get('plugins.email.settings.defaultFrom', process.env.SMTP_USERNAME || 'noreply@localhost');
+                    console.log('📧 [EMAIL DEBUG] Using from address:', fromEmail);
+                    
                     await strapi.plugins['email'].services.email.send({
                       to: email,
-                      from: strapi.config.get('plugins.email.settings.defaultFrom', 'noreply@localhost'),
+                      from: fromEmail,
                       subject: 'Welcome to Knowledge Bot - Account Created & Email Verification',
                       html: `
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
