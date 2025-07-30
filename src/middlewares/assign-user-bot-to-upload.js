@@ -76,15 +76,21 @@ module.exports = (config, { strapi }) => {
           const token = authHeader.replace('Bearer ', '');
           console.log('🔍 Found authorization token (length:', token.length, '), attempting to verify...');
           
-          // Try admin JWT first
+          // Try admin JWT first - Method 1: Admin JWT Service
           try {
             const adminJwtService = strapi.service('admin::token');
             if (!adminJwtService) {
               throw new Error('Admin JWT service not available');
             }
             const adminPayload = await adminJwtService.decodeJwtToken(token);
-            console.log('🔍 Raw admin JWT payload:', JSON.stringify(adminPayload, null, 2));
-            console.log('✅ Admin JWT verified:', { id: adminPayload?.id, email: adminPayload?.email });
+            console.log('🔍 Admin JWT Service payload:', JSON.stringify(adminPayload, null, 2));
+            
+            // If this doesn't work, try alternative method
+            if (!adminPayload?.id && !adminPayload?.user?.id) {
+              throw new Error('Admin JWT payload missing expected fields');
+            }
+            
+            console.log('✅ Admin JWT verified (Method 1):', { id: adminPayload?.id, email: adminPayload?.email });
             
             // Find corresponding users-permissions user
             const adminEmail = adminPayload?.email || adminPayload?.user?.email;
@@ -102,8 +108,48 @@ module.exports = (config, { strapi }) => {
               console.log('❌ No email found in admin JWT payload');
             }
                       } catch (adminError) {
-              console.log('⚠️ Admin JWT verification failed:', adminError.message);
-              console.log('⚠️ Trying users-permissions JWT...');
+              console.log('⚠️ Admin JWT Service failed:', adminError.message);
+              console.log('🔄 Trying alternative admin JWT method...');
+              
+              // Try alternative admin JWT decoding method
+              try {
+                const jwt = require('jsonwebtoken');
+                const jwtSecret = strapi.config.get('admin.auth.secret');
+                console.log('🔍 Using JWT secret available:', !!jwtSecret);
+                
+                const decoded = jwt.verify(token, jwtSecret);
+                const adminPayload = typeof decoded === 'string' ? null : decoded;
+                console.log('🔍 Alternative admin JWT payload:', JSON.stringify(adminPayload, null, 2));
+                console.log('✅ Admin JWT verified (Method 2):', { id: adminPayload?.id, email: adminPayload?.email });
+                
+                // Extract admin email
+                const adminEmail = adminPayload?.email || adminPayload?.user?.email;
+                console.log('🔍 Extracted admin email (Method 2):', adminEmail);
+                
+                if (adminEmail) {
+                  const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+                    filters: { email: adminEmail },
+                    limit: 1,
+                    populate: ['company']
+                  });
+                  user = users[0];
+                  console.log('✅ Found users-permissions user for admin (Method 2):', user?.email || 'null');
+                  
+                  // Skip users-permissions JWT if we found a user
+                  if (user) {
+                    throw new Error('SUCCESS_WITH_ADMIN_JWT_METHOD2'); // Use error to break out of try-catch chain
+                  }
+                } else {
+                  console.log('❌ No email found in alternative admin JWT payload');
+                }
+              } catch (altAdminError) {
+                if (altAdminError.message === 'SUCCESS_WITH_ADMIN_JWT_METHOD2') {
+                  throw altAdminError; // Re-throw success signal
+                }
+                console.log('⚠️ Alternative admin JWT method also failed:', altAdminError.message);
+              }
+              
+              console.log('⚠️ All admin JWT methods failed, trying users-permissions JWT...');
               
               // Try users-permissions JWT
             const userJwtService = strapi.plugins['users-permissions'].services.jwt;
@@ -125,8 +171,12 @@ module.exports = (config, { strapi }) => {
             }
           }
         } catch (authError) {
-          console.log('❌ Manual authentication completely failed:', authError.message);
-          console.log('❌ Auth error details:', authError);
+          if (authError.message === 'SUCCESS_WITH_ADMIN_JWT_METHOD2') {
+            console.log('✅ Successfully authenticated using alternative admin JWT method');
+          } else {
+            console.log('❌ Manual authentication completely failed:', authError.message);
+            console.log('❌ Auth error details:', authError);
+          }
         }
       } else {
         console.log('⚠️ No authorization header found for fallback authentication');
