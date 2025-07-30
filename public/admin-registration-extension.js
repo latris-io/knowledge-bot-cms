@@ -14,38 +14,71 @@
            document.title.includes('Register') ||
            document.querySelector('h1')?.textContent?.includes('Welcome');
   }
-  
-  // Counter to limit how many times we check for the form
-  let formCheckAttempts = 0;
-  const maxFormCheckAttempts = 20; // Stop after 10 seconds (20 * 500ms)
 
-  // Wait for the form to be available
-  function waitForForm() {
-    // Check if we're still on a registration-like page
-    if (!isRegistrationPage()) {
-      console.log('📍 Not on registration page, stopping form detection');
-      return;
-    }
+  // Promise-based form detection - no timers!
+  function waitForRegistrationForm() {
+    return new Promise((resolve, reject) => {
+      // First check if form is already in DOM
+      const existingForm = findRegistrationForm(document);
+      if (existingForm) {
+        console.log('📋 Registration form found immediately');
+        resolve(existingForm);
+        return;
+      }
+
+      // Set up MutationObserver to watch for form
+      const observer = new MutationObserver((mutations) => {
+        // Double-check we're still on registration page
+        if (!isRegistrationPage()) {
+          observer.disconnect();
+          console.log('📍 Left registration page, stopping form detection');
+          reject(new Error('Left registration page'));
+          return;
+        }
+
+        // Check all mutations for new forms
+        for (const mutation of mutations) {
+          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+            for (const node of mutation.addedNodes) {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                const form = findRegistrationForm(node);
+                if (form) {
+                  console.log('📋 Registration form found via MutationObserver');
+                  observer.disconnect();
+                  resolve(form);
+                  return;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Start observing
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+
+      console.log('👀 MutationObserver watching for registration form');
+
+      // Optional timeout as safety net (but no polling!)
+      setTimeout(() => {
+        observer.disconnect();
+        reject(new Error('Form detection timeout after 10 seconds'));
+      }, 10000);
+    });
+  }
+
+  // Helper function to find registration form in any element
+  function findRegistrationForm(element) {
+    // Handle document vs element
+    const searchIn = element.querySelector ? element : document;
     
-    formCheckAttempts++;
-    if (formCheckAttempts > maxFormCheckAttempts) {
-      console.log('⏰ Max form check attempts reached, stopping');
-      return;
-    }
-    
-    // Try multiple possible selectors for the registration form
-    const form = document.querySelector('form[data-testid="strapi-sign-up"]') ||
-                  document.querySelector('form[aria-labelledby="register-admin"]') ||
-                  document.querySelector('form input[name="confirmPassword"]')?.closest('form') ||
-                  document.querySelector('form input[name="email"]')?.closest('form');
-    
-    if (form) {
-      console.log('📋 Registration form found, extending it');
-      extendRegistrationForm(form);
-    } else {
-      console.log(`⏳ Waiting for registration form... (attempt ${formCheckAttempts}/${maxFormCheckAttempts})`);
-      setTimeout(waitForForm, 500);
-    }
+    return searchIn.querySelector('form[data-testid="strapi-sign-up"]') ||
+           searchIn.querySelector('form[aria-labelledby="register-admin"]') ||
+           searchIn.querySelector('form input[name="confirmPassword"]')?.closest('form') ||
+           searchIn.querySelector('form input[name="email"]')?.closest('form');
   }
 
   function extendRegistrationForm(form) {
@@ -551,46 +584,17 @@
   // Start the process
   // Only start if we're on a registration page
   if (isRegistrationPage()) {
-    console.log('📍 On registration page, starting form detection');
-    waitForForm();
+    console.log('📍 On registration page, starting event-driven form detection');
     
-    // Also set up a mutation observer to catch dynamically loaded forms (only on registration page)
-    const observer = new MutationObserver((mutations) => {
-      // Double-check we're still on registration page
-      if (!isRegistrationPage()) {
-        observer.disconnect();
-        console.log('📍 Left registration page, disconnecting mutation observer');
-        return;
-      }
-      
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-          // Check if any new forms were added
-          mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              const form = node.querySelector ? 
-                (node.querySelector('form input[name="confirmPassword"]')?.closest('form') || 
-                 (node.tagName === 'FORM' && node.querySelector('input[name="confirmPassword"]') ? node : null)) : 
-                null;
-              
-              if (form && !document.getElementById('companyName')) {
-                console.log('🔍 Found dynamically loaded form, extending...');
-                extendRegistrationForm(form);
-              }
-            }
-          });
-        }
+    waitForRegistrationForm()
+      .then(form => {
+        console.log('✅ Form detected, extending registration form');
+        extendRegistrationForm(form);
+      })
+      .catch(error => {
+        console.log('❌ Form detection failed:', error.message);
       });
-    });
-
-    // Start observing (only on registration page)
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-
-    console.log('👀 Mutation observer set up for dynamic form detection');
   } else {
-    console.log('📍 Not on registration page, skipping form detection and mutation observer');
+    console.log('📍 Not on registration page, skipping form detection');
   }
 })(); 
