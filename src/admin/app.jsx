@@ -220,7 +220,7 @@ export default {
           const pageText = document.body.textContent || '';
           const pageHtml = document.body.innerHTML || '';
           
-          // Check for standard user indicators (generic approach)
+          // Check for standard user indicators (role-based approach only)
           const isStandardUser = 
             // Primary: Role from context (most reliable)
             userRoleFromContext === 'Standard User' ||
@@ -232,10 +232,7 @@ export default {
             pageHtml.includes('standard-user') ||
             // Check if user profile/settings show Standard User role
             document.querySelector('[data-testid*="role"]')?.textContent?.includes('Standard User') ||
-            document.querySelector('[class*="role"]')?.textContent?.includes('Standard User') ||
-            // Backup: specific email for martybremer (temporary)
-            pageText.includes('martybremer@icloud.com') ||
-            pageHtml.includes('martybremer@icloud.com');
+            document.querySelector('[class*="role"]')?.textContent?.includes('Standard User');
           
           console.log('🎭 [ADMIN APP] Standard user detected:', isStandardUser);
           console.log('🔍 [ADMIN APP] Detection details:', {
@@ -244,12 +241,12 @@ export default {
             hasStandardUserHtml: pageHtml.includes('Standard User'),
             hasStandardUserLowercase: pageText.includes('standard-user'),
             hasRoleSelector: !!document.querySelector('[data-testid*="role"]')?.textContent?.includes('Standard User'),
-            hasMartyEmail: pageText.includes('martybremer@icloud.com')
+            hasClassRoleSelector: !!document.querySelector('[class*="role"]')?.textContent?.includes('Standard User')
           });
           
           // Only hide if we detect the standard user
           if (isStandardUser) {
-            console.log('🚫 [ADMIN APP] Hiding Content Manager and Settings for standard user');
+            console.log('🚫 [ADMIN APP] Hiding Content Manager and Settings for Standard User role');
             
             // Improved CSS to hide Content Manager and Settings
             const style = document.createElement('style');
@@ -386,7 +383,7 @@ export default {
             setTimeout(hideMenuItemsJS, 3000);
             setTimeout(hideMenuItemsJS, 5000);
         } else {
-            console.log('✅ [ADMIN APP] Not standard user - Content Manager and Settings remain visible');
+            console.log('✅ [ADMIN APP] Not Standard User role - Content Manager and Settings remain visible');
         }
       } catch (error) {
           console.error('❌ [ADMIN APP] Error in hideMenuItemsForStandardUsers:', error);
