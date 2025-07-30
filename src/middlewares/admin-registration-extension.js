@@ -455,6 +455,16 @@ module.exports = (config, { strapi }) => {
                       return;
                     }
                     
+                    // Debug SMTP configuration
+                    const emailConfig = strapi.config.get('plugins.email', {});
+                    console.log('📧 [EMAIL DEBUG] Full email config:', JSON.stringify(emailConfig, null, 2));
+                    console.log('📧 [EMAIL DEBUG] Environment variables:');
+                    console.log('  - SMTP_HOST:', process.env.SMTP_HOST || 'NOT SET');
+                    console.log('  - SMTP_PORT:', process.env.SMTP_PORT || 'NOT SET');  
+                    console.log('  - SMTP_USERNAME:', process.env.SMTP_USERNAME ? 'SET' : 'NOT SET');
+                    console.log('  - SMTP_PASSWORD:', process.env.SMTP_PASSWORD ? 'SET' : 'NOT SET');
+                    console.log('  - NODE_ENV:', process.env.NODE_ENV);
+                    
                     await strapi.plugins['email'].services.email.send({
                       to: email,
                       from: strapi.config.get('plugins.email.settings.defaultFrom', 'noreply@localhost'),
