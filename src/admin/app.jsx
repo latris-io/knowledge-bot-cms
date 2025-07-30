@@ -189,16 +189,63 @@ export default {
       // Wait a bit for the admin panel to fully load
       setTimeout(() => {
         try {
+          // Try to access user role information from Strapi admin context
+          let userRoleFromContext = null;
+          try {
+            // Check if Strapi admin app context is available (suppress TS errors for dynamic properties)
+            // @ts-ignore
+            const globalWindow = window;
+            // @ts-ignore
+            if (globalWindow.strapi && 
+                globalWindow.strapi.admin && 
+                globalWindow.strapi.admin.user) {
+              // @ts-ignore
+              const user = globalWindow.strapi.admin.user;
+              console.log('🔍 [ADMIN APP] Found Strapi user context:', user);
+              if (user.roles && Array.isArray(user.roles) && user.roles.length > 0) {
+                userRoleFromContext = user.roles[0].name;
+                console.log('🔍 [ADMIN APP] User role from context:', userRoleFromContext);
+              }
+            }
+            
+            // Also check React context if available
+            if (!userRoleFromContext && globalWindow.React) {
+              console.log('🔍 [ADMIN APP] Attempting to find user role in React context...');
+              // This would require more complex context inspection
+            }
+          } catch (contextError) {
+            console.log('🔍 [ADMIN APP] Could not access user context:', contextError.message);
+          }
           // Multiple detection methods for better reliability
           const pageText = document.body.textContent || '';
           const pageHtml = document.body.innerHTML || '';
           
-          // Check for standard user indicators
-          const isStandardUser = pageText.includes('martybremer@icloud.com') || 
-                                pageText.includes('Standard User') ||
-                                pageHtml.includes('martybremer@icloud.com');
+          // Check for standard user indicators (generic approach)
+          const isStandardUser = 
+            // Primary: Role from context (most reliable)
+            userRoleFromContext === 'Standard User' ||
+            // Role-based detection (works for any user with Standard User role)
+            pageText.includes('Standard User') ||
+            pageHtml.includes('Standard User') ||
+            // Look for role information in common Strapi admin locations
+            pageText.includes('standard-user') ||
+            pageHtml.includes('standard-user') ||
+            // Check if user profile/settings show Standard User role
+            document.querySelector('[data-testid*="role"]')?.textContent?.includes('Standard User') ||
+            document.querySelector('[class*="role"]')?.textContent?.includes('Standard User') ||
+            // Backup: specific email for martybremer (temporary)
+            pageText.includes('martybremer@icloud.com') ||
+            pageHtml.includes('martybremer@icloud.com');
           
           console.log('🎭 [ADMIN APP] Standard user detected:', isStandardUser);
+          console.log('🔍 [ADMIN APP] Detection details:', {
+            roleFromContext: userRoleFromContext,
+            hasStandardUserText: pageText.includes('Standard User'),
+            hasStandardUserHtml: pageHtml.includes('Standard User'),
+            hasStandardUserLowercase: pageText.includes('standard-user'),
+            hasRoleSelector: !!document.querySelector('[data-testid*="role"]')?.textContent?.includes('Standard User'),
+            hasMartyEmail: pageText.includes('martybremer@icloud.com')
+          });
           
           // Only hide if we detect the standard user
           if (isStandardUser) {
