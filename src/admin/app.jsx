@@ -749,13 +749,119 @@ export default {
     setTimeout(hideMenuItemsForStandardUsers, 5000);
     setTimeout(hideMenuItemsForStandardUsers, 10000);
     
-    // Additional approach: Wait for page to be fully loaded
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(hideMenuItemsForStandardUsers, 1000);
-        setTimeout(hideMenuItemsForStandardUsers, 3000);
+    // Event-driven approach: Listen for authentication state changes
+    const waitForUserContextEventDriven = () => {
+      return new Promise((resolve) => {
+        console.log('🔍 [ADMIN APP] Setting up event-driven user context detection...');
+        
+        // Check immediately first
+        const checkUserContext = () => {
+          const hasUserContext = !!(
+            // @ts-ignore - Dynamic Strapi admin context
+            (window.strapi && window.strapi.admin && window.strapi.admin.user) ||
+            document.body.textContent?.includes('Standard User') ||
+            document.body.textContent?.includes('user') ||
+            localStorage.getItem('strapi-jwt-token')
+          );
+          
+          if (hasUserContext) {
+            console.log('✅ [ADMIN APP] User context found via event-driven detection');
+            resolve(true);
+            return true;
+          }
+          return false;
+        };
+        
+        // Check immediately
+        if (checkUserContext()) return;
+        
+        // Listen for storage changes (JWT token updates)
+        const handleStorageChange = (event) => {
+          if (event.key === 'strapi-jwt-token' || event.key === null) {
+            console.log('🔑 [ADMIN APP] JWT token change detected');
+            if (checkUserContext()) {
+              cleanup();
+            }
+          }
+        };
+        
+        // Listen for DOM mutations that might indicate user context loading
+        const observer = new MutationObserver((mutations) => {
+          let shouldCheck = false;
+          
+          for (const mutation of mutations) {
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+              // Check if any added nodes might contain user context
+              for (const node of mutation.addedNodes) {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                  const text = node.textContent || '';
+                  if (text.includes('user') || text.includes('User') || text.includes('profile')) {
+                    shouldCheck = true;
+                    break;
+                  }
+                }
+              }
+            }
+            if (shouldCheck) break;
+          }
+          
+          if (shouldCheck && checkUserContext()) {
+            cleanup();
+          }
+        });
+        
+        // Listen for window events that might indicate authentication completion
+        const handleAuthEvent = () => {
+          console.log('🔐 [ADMIN APP] Authentication event detected');
+          setTimeout(() => { // Small delay to let auth complete
+            if (checkUserContext()) {
+              cleanup();
+            }
+          }, 100);
+        };
+        
+        // Listen for React state updates (focus/blur can indicate state changes)
+        const handleFocusChange = () => {
+          if (document.hasFocus() && checkUserContext()) {
+            cleanup();
+          }
+        };
+        
+        // Cleanup function
+        const cleanup = () => {
+          window.removeEventListener('storage', handleStorageChange);
+          window.removeEventListener('focus', handleAuthEvent);
+          window.removeEventListener('beforeunload', handleAuthEvent);
+          window.removeEventListener('pageshow', handleAuthEvent);
+          window.removeEventListener('focus', handleFocusChange);
+          observer.disconnect();
+          resolve(true);
+        };
+        
+        // Set up event listeners
+        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('focus', handleAuthEvent);
+        window.addEventListener('beforeunload', handleAuthEvent);
+        window.addEventListener('pageshow', handleAuthEvent);
+        window.addEventListener('focus', handleFocusChange);
+        
+        // Set up DOM observer
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributeFilter: ['class', 'data-user', 'data-role']
+        });
+        
+        console.log('👀 [ADMIN APP] Event listeners and DOM observer set up for user context detection');
+        
+        // Safety timeout (but no polling!)
+        setTimeout(() => {
+          console.log('⏰ [ADMIN APP] User context detection timeout after 30 seconds');
+          cleanup();
+          resolve(false);
+        }, 30000);
       });
-    }
+    };
     
     // Additional approach: Wait for window load event  
     window.addEventListener('load', () => {
@@ -763,34 +869,14 @@ export default {
       setTimeout(hideMenuItemsForStandardUsers, 5000);
     });
     
-    // Additional approach: Keep checking until we find user context
-    let userContextCheckAttempts = 0;
-    const maxUserContextAttempts = 20; // 20 attempts over 40 seconds
-    
-    const waitForUserContext = () => {
-      userContextCheckAttempts++;
-      console.log(`🔍 [ADMIN APP] User context check attempt ${userContextCheckAttempts}/${maxUserContextAttempts}`);
-      
-      // Check if we have any user context now
-      const hasUserContext = !!(
-        // @ts-ignore - Dynamic Strapi admin context
-        (window.strapi && window.strapi.admin && window.strapi.admin.user) ||
-        document.body.textContent?.includes('Standard User') ||
-        document.body.textContent?.includes('user') ||
-        localStorage.getItem('strapi-jwt-token')
-      );
-      
-      if (hasUserContext) {
-        console.log('✅ [ADMIN APP] User context found, running menu hiding...');
+    // Start event-driven user context detection
+    waitForUserContextEventDriven().then((found) => {
+      if (found) {
+        console.log('✅ [ADMIN APP] Running menu hiding after event-driven detection');
         hideMenuItemsForStandardUsers();
-      } else if (userContextCheckAttempts < maxUserContextAttempts) {
-        setTimeout(waitForUserContext, 2000); // Check every 2 seconds
       } else {
-        console.log('⚠️ [ADMIN APP] Max user context check attempts reached, giving up');
+        console.log('⚠️ [ADMIN APP] User context detection completed without finding context');
       }
-    };
-    
-    // Start checking for user context
-    setTimeout(waitForUserContext, 3000);
+    });
   }
 }; 
