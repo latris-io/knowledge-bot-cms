@@ -1,9 +1,40 @@
-// Admin Registration Extension
-// This script extends the default Strapi admin registration form with company and bot fields
+// Admin Registration Extension - SECURE MULTI-TENANT VERSION
+// This script extends the default Strapi admin registration form with secure company assignment
 
 (function() {
-  console.log('🚀 Admin registration extension loaded');
+  console.log('🚀 Admin registration extension loaded - SECURE MULTI-TENANT VERSION');
   
+  // 🛡️ COMPREHENSIVE GENERIC EMAIL DOMAINS LIST
+  // These domains require manual company entry with uniqueness validation
+  const GENERIC_EMAIL_DOMAINS = [
+    // Major providers
+    'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'live.com',
+    'icloud.com', 'me.com', 'mac.com', 'aol.com', 'msn.com',
+    
+    // International major providers
+    'yandex.com', 'yandex.ru', 'mail.ru', 'qq.com', '163.com', '126.com',
+    'sina.com', 'sohu.com', 'naver.com', 'daum.net', 'hanmail.net',
+    
+    // Privacy-focused providers
+    'protonmail.com', 'proton.me', 'tutanota.com', 'securemail.pro',
+    'privatemail.com', 'guerrillamail.com', 'temp-mail.org',
+    
+    // Business-oriented but generic
+    'zoho.com', 'mail.com', 'gmx.com', 'gmx.net', 'web.de',
+    'fastmail.com', 'runbox.com', 'hushmail.com',
+    
+    // Educational (generic)
+    'student.com', 'alumni.com', 'education.com',
+    
+    // Mobile/Telecom providers
+    'verizon.net', 'att.net', 'comcast.net', 'charter.net', 'cox.net',
+    'roadrunner.com', 'earthlink.net', 'sbcglobal.net',
+    
+    // Legacy/Other
+    'rediffmail.com', 'lycos.com', 'excite.com', 'juno.com',
+    'netscape.net', 'aim.com', 'inbox.com', 'mail2world.com'
+  ];
+
   // Check if we're on the registration page
   function isRegistrationPage() {
     const url = window.location.href;
@@ -13,6 +44,11 @@
            path.endsWith('/register') ||
            document.title.includes('Register') ||
            document.querySelector('h1')?.textContent?.includes('Welcome');
+  }
+
+  // Check if email domain is generic (consumer email provider)
+  function isGenericEmailDomain(domain) {
+    return GENERIC_EMAIL_DOMAINS.includes(domain.toLowerCase());
   }
 
   // Promise-based form detection - no timers!
@@ -82,7 +118,7 @@
   }
 
   function extendRegistrationForm(form) {
-    console.log('🔧 Extending registration form...', form);
+    console.log('🔧 Extending registration form with SECURE MULTI-TENANT logic...', form);
     
     // Find the password confirmation field
     const confirmPasswordField = form.querySelector('input[name="confirmPassword"]');
@@ -112,7 +148,7 @@
       return;
     }
 
-    // Create company name field with autocomplete
+    // 🛡️ SECURE COMPANY FIELD - NO SEARCH CAPABILITY
     const companyFieldHTML = `
       <div style="margin-bottom: 16px; position: relative;">
         <label style="display: block; margin-bottom: 4px; font-weight: 500; color: #32324d; font-size: 14px;">
@@ -124,7 +160,7 @@
           id="companyName"
           required
           autocomplete="organization"
-          placeholder="Enter or search for your company"
+          placeholder="Enter your company name"
           style="
             width: 100%; 
             padding: 12px 16px; 
@@ -135,21 +171,7 @@
             transition: border-color 0.2s;
           "
         />
-        <div id="company-dropdown" style="
-          position: absolute;
-          top: 100%;
-          left: 0;
-          right: 0;
-          background: white;
-          border: 1px solid #dcdce4;
-          border-top: none;
-          border-radius: 0 0 4px 4px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-          z-index: 1000;
-          display: none;
-          max-height: 200px;
-          overflow-y: auto;
-        "></div>
+        <div id="company-info" style="color: #0c75de; font-size: 12px; margin-top: 4px; display: none;"></div>
         <div id="company-error" style="color: #d02b20; font-size: 12px; margin-top: 4px; display: none;"></div>
       </div>
     `;
@@ -159,7 +181,7 @@
 
     // Get references to new elements
     const companyInput = document.getElementById('companyName');
-    const companyDropdown = document.getElementById('company-dropdown');
+    const companyInfo = document.getElementById('company-info');
     const companyError = document.getElementById('company-error');
     const emailInput = form.querySelector('input[name="email"]');
 
@@ -207,29 +229,70 @@
       // Replace the broken input with our working one
       container.replaceChild(newEmailInput, emailInput);
       
-            console.log('✅ Replaced broken React input with clean HTML input');
-            console.log('✅ Email field is now fully functional - try typing in it!');
+      console.log('✅ Replaced broken React input with clean HTML input');
+      console.log('✅ Email field is now fully functional - try typing in it!');
     }
 
     let selectedCompany = null;
     let domainCompany = null; // Company from domain check
+    let companyAssignmentMode = null; // 'auto', 'manual-generic', 'manual-business'
 
-    // Email domain checking functionality
+    // 🛡️ SECURE EMAIL DOMAIN CHECKING
     async function checkEmailDomain(email) {
       const domain = email.split('@')[1];
-      if (!domain) return null;
+      if (!domain) return { type: 'invalid', company: null };
 
+      console.log(`🔍 [SECURITY] Checking domain: ${domain}`);
+
+      // Check if it's a generic domain first
+      if (isGenericEmailDomain(domain)) {
+        console.log(`🔒 [SECURITY] Generic domain detected: ${domain} - manual company entry required`);
+        return { type: 'generic', company: null };
+      }
+
+      // Check if business domain has existing company
       try {
         const response = await fetch(`/api/check-email-domain?domain=${encodeURIComponent(domain)}`);
         const data = await response.json();
         
         if (data.company) {
-          return data.company;
+          console.log(`🏢 [SECURITY] Business domain with existing company: ${domain} -> ${data.company.name}`);
+          return { type: 'business-existing', company: data.company };
+        } else {
+          console.log(`🏢 [SECURITY] Business domain with no existing company: ${domain} - manual entry required`);
+          return { type: 'business-new', company: null };
         }
       } catch (error) {
-        console.error('Domain check error:', error);
+        console.error('❌ [SECURITY] Domain check error:', error);
+        return { type: 'error', company: null };
       }
-      return null;
+    }
+
+    // 🛡️ SECURE COMPANY UNIQUENESS VALIDATION
+    async function validateCompanyUniqueness(companyName) {
+      if (!companyName || !companyName.trim()) {
+        return { isUnique: false, error: 'Company name is required' };
+      }
+
+      const trimmedName = companyName.trim();
+      
+      try {
+        console.log(`🔍 [SECURITY] Validating company uniqueness: "${trimmedName}"`);
+        
+        const response = await fetch(`/api/companies/validate-unique?name=${encodeURIComponent(trimmedName)}`);
+        const data = await response.json();
+        
+        if (data.isUnique) {
+          console.log(`✅ [SECURITY] Company name "${trimmedName}" is unique`);
+          return { isUnique: true, error: null };
+        } else {
+          console.log(`❌ [SECURITY] Company name "${trimmedName}" already exists`);
+          return { isUnique: false, error: 'A company with this name already exists. Please choose a different name.' };
+        }
+      } catch (error) {
+        console.error('❌ [SECURITY] Company uniqueness validation error:', error);
+        return { isUnique: false, error: 'Unable to validate company name. Please try again.' };
+      }
     }
 
     // Email input change handler - get the new email input
@@ -239,47 +302,61 @@
         const email = this.value.trim();
         if (!email || !email.includes('@')) return;
 
-        // Check if domain has existing users
-        const company = await checkEmailDomain(email);
+        // Clear previous states
+        clearCompanyMessages();
+        companyInput.disabled = false;
+        companyInput.style.backgroundColor = '#ffffff';
+        companyInput.style.cursor = 'text';
+        selectedCompany = null;
+        domainCompany = null;
+
+        // Check domain
+        const domainResult = await checkEmailDomain(email);
         
-        if (company) {
-          // Found a company with the same domain
-          domainCompany = company;
-          companyInput.value = company.name;
-          companyInput.disabled = true;
-          companyInput.style.backgroundColor = '#f6f6f9';
-          companyInput.style.cursor = 'not-allowed';
-          selectedCompany = company;
-          
-          // Add info message
-          const infoMessage = document.createElement('div');
-          infoMessage.id = 'domain-company-info';
-          infoMessage.style.cssText = 'color: #0c75de; font-size: 12px; margin-top: 4px;';
-          infoMessage.textContent = 'Company auto-filled based on your email domain';
-          
-          const existingInfo = document.getElementById('domain-company-info');
-          if (existingInfo) existingInfo.remove();
-          
-          companyInput.parentNode.appendChild(infoMessage);
-        } else {
-          // No company found, enable the field
-          domainCompany = null;
-          if (companyInput.disabled) {
-            companyInput.value = '';
-            companyInput.disabled = false;
-            companyInput.style.backgroundColor = '#ffffff';
-            companyInput.style.cursor = 'text';
-            selectedCompany = null;
+        switch (domainResult.type) {
+          case 'business-existing':
+            // Auto-assign to existing company
+            companyAssignmentMode = 'auto';
+            domainCompany = domainResult.company;
+            companyInput.value = domainResult.company.name;
+            companyInput.setAttribute('disabled', 'true');
+            companyInput.style.backgroundColor = '#f6f6f9';
+            companyInput.style.cursor = 'not-allowed';
+            selectedCompany = domainResult.company;
             
-            const existingInfo = document.getElementById('domain-company-info');
-            if (existingInfo) existingInfo.remove();
-          }
+            showCompanyInfo('Company auto-assigned based on your email domain', 'info');
+            break;
+            
+          case 'generic':
+            // Generic domain - manual entry required
+            companyAssignmentMode = 'manual-generic';
+            companyInput.value = '';
+            companyInput.setAttribute('placeholder', 'Enter your company name (must be unique)');
+            
+            showCompanyInfo('Generic email domain detected. Please enter your company name.', 'warning');
+            break;
+            
+          case 'business-new':
+            // Business domain with no existing company - manual entry
+            companyAssignmentMode = 'manual-business';
+            companyInput.value = '';
+            companyInput.setAttribute('placeholder', 'Enter your company name (must be unique)');
+            
+            showCompanyInfo('New business domain. Please enter your company name.', 'info');
+            break;
+            
+          default:
+            // Error or invalid - manual entry
+            companyAssignmentMode = 'manual-generic';
+            companyInput.value = '';
+            companyInput.setAttribute('placeholder', 'Enter your company name');
+            break;
         }
       });
     }
 
-    // Company search functionality
-    let searchTimeout;
+    // 🛡️ SECURE COMPANY INPUT HANDLER - NO SEARCH, ONLY UNIQUENESS VALIDATION
+    let validationTimeout;
     companyInput.addEventListener('input', function() {
       // Don't allow editing if company is locked from domain
       if (this.disabled || domainCompany) {
@@ -289,84 +366,78 @@
       const query = this.value.trim();
       
       // Clear previous timeout
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
+      if (validationTimeout) {
+        clearTimeout(validationTimeout);
       }
 
-      // Clear selection when user types
-      selectedCompany = null;
+      // Clear previous validation results
+      clearCompanyMessages();
       
       if (query.length === 0) {
-        companyDropdown.style.display = 'none';
         return;
       }
 
-      // Debounce search
-      searchTimeout = setTimeout(() => {
-        searchCompanies(query);
-      }, 300);
-    });
-
-    async function searchCompanies(query) {
-      try {
-        const response = await fetch(`/api/companies?register-search=true&filters[name][$containsi]=${encodeURIComponent(query)}&pagination[limit]=10`);
-        const data = await response.json();
+      // Debounce uniqueness validation
+      validationTimeout = setTimeout(async () => {
+        const validation = await validateCompanyUniqueness(query);
         
-        displayCompanyResults(data.data || []);
-      } catch (error) {
-        console.error('Company search error:', error);
-        companyDropdown.style.display = 'none';
-      }
-    }
-
-    function displayCompanyResults(companies) {
-      if (companies.length === 0) {
-        companyDropdown.style.display = 'none';
-        return;
-      }
-
-      const html = companies.map(company => `
-        <div class="company-option" data-company='${JSON.stringify(company)}' style="
-          padding: 12px 16px;
-          cursor: pointer;
-          border-bottom: 1px solid #f6f6f9;
-          transition: background-color 0.2s;
-        " onmouseover="this.style.backgroundColor='#f6f6f9'" onmouseout="this.style.backgroundColor='white'">
-          <div style="font-weight: 500; color: #32324d;">${company.name}</div>
-        </div>
-      `).join('');
-
-      companyDropdown.innerHTML = html;
-      companyDropdown.style.display = 'block';
-
-      // Add click handlers
-      companyDropdown.querySelectorAll('.company-option').forEach(option => {
-        option.addEventListener('click', function() {
-          const company = JSON.parse(this.dataset.company);
-          selectCompany(company);
-        });
-      });
-    }
-
-    function selectCompany(company) {
-      selectedCompany = company;
-      companyInput.value = company.name;
-      companyDropdown.style.display = 'none';
-      clearFieldError(companyInput);
-    }
-
-    // Hide dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-      if (!companyInput.contains(e.target) && !companyDropdown.contains(e.target)) {
-        companyDropdown.style.display = 'none';
-      }
+        if (!validation.isUnique) {
+          showCompanyError(validation.error);
+        } else {
+          showCompanyInfo('✓ Company name is available', 'success');
+        }
+      }, 500);
     });
+
+    // Helper functions for messaging
+    function showCompanyInfo(message, type = 'info') {
+      clearCompanyMessages();
+      companyInfo.textContent = message;
+      companyInfo.style.display = 'block';
+      
+      switch (type) {
+        case 'success':
+          companyInfo.style.color = '#27ae60';
+          break;
+        case 'warning':
+          companyInfo.style.color = '#f39c12';
+          break;
+        case 'info':
+        default:
+          companyInfo.style.color = '#0c75de';
+          break;
+      }
+    }
+
+    function showCompanyError(message) {
+      clearCompanyMessages();
+      companyError.textContent = message;
+      companyError.style.display = 'block';
+      companyInput.style.borderColor = '#d02b20';
+    }
+
+    function clearCompanyMessages() {
+      companyInfo.style.display = 'none';
+      companyError.style.display = 'none';
+      companyInput.style.borderColor = '#dcdce4';
+    }
+
+    function clearFieldError(field) {
+      // Remove red border
+      field.style.borderColor = '#dcdce4';
+      
+      // Remove error message
+      const existingError = field.parentNode.querySelector('.field-error');
+      if (existingError) {
+        existingError.remove();
+      }
+    }
 
     // Form submission handling
     form.addEventListener('submit', handleFormSubmission);
   }
 
-  function handleFormSubmission(e) {
+  async function handleFormSubmission(e) {
     e.preventDefault();
     e.stopPropagation();
     
@@ -380,43 +451,74 @@
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
     
-    console.log('📝 Form data:', data);
+    console.log('📝 [SECURITY] Form data:', data);
     
-    // Validate required fields
+    // 🛡️ ENHANCED VALIDATION WITH SECURITY CHECKS
     let hasErrors = false;
     
-    // Validate first name
-    if (!data.firstname?.trim()) {
+    // Validate first name (cast to string)
+    const firstName = String(data.firstname || '');
+    if (!firstName.trim()) {
       showFieldError('firstname', 'This value is required.');
       hasErrors = true;
     }
     
-    // Validate email
-    if (!data.email?.trim()) {
+    // Validate email (cast to string)
+    const email = String(data.email || '');
+    if (!email.trim()) {
       showFieldError('email', 'This value is required.');
       hasErrors = true;
     }
     
-    // Validate confirm password
-    if (!data.confirmPassword?.trim()) {
+    // Validate confirm password (cast to string)
+    const confirmPassword = String(data.confirmPassword || '');
+    if (!confirmPassword.trim()) {
       showFieldError('confirmPassword', 'Confirm password is required.');
       hasErrors = true;
     }
     
-    // Custom validation for company name
-    if (!data.companyName?.trim()) {
+    // 🛡️ SECURE COMPANY VALIDATION
+    const companyField = document.getElementById('companyName');
+    const companyName = String(data.companyName || '');
+    if (!companyName.trim()) {
       // Check if company field is disabled (meaning it was auto-filled)
-      const companyField = document.getElementById('companyName');
-      if (companyField && companyField.disabled && companyField.value) {
+      if (companyField && companyField.hasAttribute('disabled') && companyField.value) {
         data.companyName = companyField.value;
+        console.log('✅ [SECURITY] Using auto-assigned company:', data.companyName);
       } else {
-        showFieldError('companyName', 'This value is required.');
+        showFieldError('companyName', 'Company name is required.');
         hasErrors = true;
+      }
+    } else {
+      // For manual entry, validate uniqueness one final time
+      if (!companyField.hasAttribute('disabled')) {
+        console.log('🔍 [SECURITY] Final company uniqueness validation...');
+        
+        // Disable submit button during validation
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.textContent = 'Validating...';
+        }
+        
+        const validation = await validateCompanyUniqueness(companyName);
+        
+        if (!validation.isUnique) {
+          showFieldError('companyName', validation.error);
+          hasErrors = true;
+        } else {
+          console.log('✅ [SECURITY] Final company validation passed');
+        }
+        
+        // Re-enable submit button
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = "Let's start";
+        }
       }
     }
     
     if (hasErrors) {
-      console.log('❌ Form validation failed');
+      console.log('❌ [SECURITY] Form validation failed');
       return;
     }
     
@@ -426,7 +528,7 @@
       return;
     }
     
-    console.log('✅ Form validation passed, submitting...');
+    console.log('✅ [SECURITY] Form validation passed, submitting...');
     
     // Disable submit button during processing
     if (submitButton) {
@@ -453,9 +555,9 @@
       if (response.ok) {
         // Show simple success message
         if (result.emailVerificationRequired) {
-          alert(`✅ Account created successfully!\\n\\n📧 We've sent you an email with your account details and verification link.\\n\\n🔍 DEVELOPMENT MODE: Check the server console for full account information.\\n\\n⚠️ You must verify your email before you can log in.`);
+          alert(`✅ Account created successfully!\n\n📧 We've sent you an email with your account details and verification link.\n\n🔍 DEVELOPMENT MODE: Check the server console for full account information.\n\n⚠️ You must verify your email before you can log in.`);
         } else {
-          alert(`✅ Admin account created successfully!\\n\\nCheck your email for login instructions.`);
+          alert(`✅ Admin account created successfully!\n\nCheck your email for login instructions.`);
         }
 
         // Redirect to login after a brief delay
@@ -494,13 +596,13 @@
                 }
                 return 'Validation error';
               });
-              errorMessage = `❌ Registration Issues:\\n\\n${errorMessages.join('\\n')}`;
+              errorMessage = `❌ Registration Issues:\n\n${errorMessages.join('\n')}`;
             }
           }
           
           // Handle specific common server errors
           if (errorMessage.includes('must be unique')) {
-            errorMessage = '❌ Registration Error:\\n\\nThis email address is already registered.\\n\\nPlease try:\\n• Using a different email address\\n• Logging in if you already have an account';
+            errorMessage = '❌ Registration Error:\n\nThis email address is already registered.\n\nPlease try:\n• Using a different email address\n• Logging in if you already have an account';
           }
           
         } catch (parseError) {
@@ -517,7 +619,7 @@
       let errorMessage = '❌ Registration failed';
       
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        errorMessage = '❌ Network Error\\n\\nCannot connect to the server. Please check your internet connection and try again.';
+        errorMessage = '❌ Network Error\n\nCannot connect to the server. Please check your internet connection and try again.';
       } else if (error.message) {
         errorMessage = `❌ Registration Error: ${error.message}`;
       } else {
@@ -570,25 +672,15 @@
     field.parentNode.appendChild(errorDiv);
   }
 
-  function clearFieldError(field) {
-    // Remove red border
-    field.style.borderColor = '#dcdce4';
-    
-    // Remove error message
-    const existingError = field.parentNode.querySelector('.field-error');
-    if (existingError) {
-      existingError.remove();
-    }
-  }
-
   // Start the process
   // Only start if we're on a registration page
   if (isRegistrationPage()) {
-    console.log('📍 On registration page, starting event-driven form detection');
+    console.log('📍 On registration page, starting SECURE MULTI-TENANT form detection');
+    console.log(`🛡️ [SECURITY] Loaded ${GENERIC_EMAIL_DOMAINS.length} generic email domains for validation`);
     
     waitForRegistrationForm()
       .then(form => {
-        console.log('✅ Form detected, extending registration form');
+        console.log('✅ Form detected, extending with SECURE MULTI-TENANT logic');
         extendRegistrationForm(form);
       })
       .catch(error => {

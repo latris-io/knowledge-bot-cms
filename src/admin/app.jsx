@@ -190,44 +190,72 @@ export default {
       let isProcessing = false;
       
       const processRoleDetection = async () => {
-        if (isProcessing) return; // Prevent duplicate processing
+        if (isProcessing) {
+          return; // Prevent duplicate processing only
+        }
+        
         isProcessing = true;
         
         try {
           console.log('🔍 [ADMIN APP] Checking if menu items should be hidden...');
           
-          // Simple API call to get current user's role
+          // Simple API call to get current user's role - using same pattern as AI Chat component
           const getCurrentUserRole = async () => {
             try {
+              console.log('🔍 [ADMIN APP] Fetching current user from /admin/users/me...');
+              
+              // Get JWT token from cookies (same as AI Chat component)
+              const getCookieValue = (name) => {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(';').shift();
+                return null;
+              };
+              
+              const jwtToken = getCookieValue('jwtToken');
+              
+              const headers = {
+                'Content-Type': 'application/json',
+              };
+              
+              if (jwtToken) {
+                headers['Authorization'] = `Bearer ${jwtToken}`;
+              }
+              
               const response = await fetch('/admin/users/me', {
                 method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${localStorage.getItem('strapi-jwt-token')}`
-                }
+                headers,
+                credentials: 'include', // Include cookies for authentication
               });
               
               if (!response.ok) {
-                console.log('⚠️ [ADMIN APP] Failed to fetch current user:', response.status);
-                return { isStandardUser: false, method: 'api-error' };
+                console.log(`⚠️ [ADMIN APP] Failed to fetch current user: ${response.status} (auth may not be ready yet)`);
+                return { isStandardUser: false, method: 'api-error', error: response.status };
               }
               
               const userData = await response.json();
               console.log('👤 [ADMIN APP] Current user data:', userData);
               
-              // Check if user has Standard User role
-              const hasStandardRole = userData.roles?.some(role => 
+              // Access nested data structure - Strapi admin API returns {data: {...}}
+              const userInfo = userData.data || userData;
+              
+              // Check if user has roles and if any role is "Standard User"
+              const userRoles = userInfo.roles || [];
+              console.log('🎭 [ADMIN APP] User roles:', userRoles);
+              
+              const isStandardUser = userRoles.some(role => 
                 role.name === 'Standard User' || 
                 role.code === 'standard-user' ||
-                role.type === 'standard-user' ||
                 role.name?.toLowerCase().includes('standard')
-              ) || false;
+              );
               
-              return { 
-                isStandardUser: hasStandardRole, 
-                method: 'api-call',
-                userRoles: userData.roles?.map(r => r.name) || [],
-                userId: userData.id
+              console.log(`🎯 [ADMIN APP] Is Standard User: ${isStandardUser}`);
+              
+              return {
+                isStandardUser,
+                method: 'api-roles',
+                userRoles: userRoles.map(r => r.name),
+                userId: userInfo.id
               };
               
             } catch (error) {
@@ -339,21 +367,39 @@ export default {
       
       // Set up storage event listener for auth changes
       window.addEventListener('storage', (event) => {
-        if (event.key === 'strapi-jwt-token') {
-          console.log('🔑 [ADMIN APP] Auth token changed, checking roles...');
+        // Check if any JWT-like token was set (contains dots like JWT tokens)
+        if (event.newValue && event.newValue.includes('.') && event.newValue.split('.').length === 3) {
+          console.log(`🔑 [ADMIN APP] JWT-like token detected in storage key "${event.key}", checking roles...`);
           processRoleDetection().catch(error => {
             console.log('❌ [ADMIN APP] Error in role detection:', error);
           });
         }
       });
       
-      // Set up focus event for tab changes
-      window.addEventListener('focus', () => {
-        console.log('👁️ [ADMIN APP] Window focused, checking roles...');
-        processRoleDetection().catch(error => {
-          console.log('❌ [ADMIN APP] Error in role detection:', error);
-        });
-      });
+      // Intercept the /admin/users/me response to detect when authentication completes
+      const originalFetch = window.fetch;
+      window.fetch = async (...args) => {
+        const response = await originalFetch(...args);
+        
+        // Check if this is a successful /admin/users/me call
+        let url = '';
+        if (typeof args[0] === 'string') {
+          url = args[0];
+        } else if (args[0] instanceof URL) {
+          url = args[0].href;
+        } else if (args[0] instanceof Request) {
+          url = args[0].url;
+        }
+        
+        if (url.includes('/admin/users/me') && response.status === 200) {
+          console.log('🔑 [ADMIN APP] User authentication detected via API call, checking roles...');
+          processRoleDetection().catch(error => {
+            console.log('❌ [ADMIN APP] Error in role detection:', error);
+          });
+        }
+        
+        return response;
+      };
       
       // Initial check
       processRoleDetection().catch(error => {
