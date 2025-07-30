@@ -3,9 +3,36 @@
 
 (function() {
   console.log('🚀 Admin registration extension loaded');
+  
+  // Check if we're on the registration page
+  function isRegistrationPage() {
+    const url = window.location.href;
+    const path = window.location.pathname;
+    return url.includes('/auth/register') || 
+           path.includes('/auth/register') || 
+           path.endsWith('/register') ||
+           document.title.includes('Register') ||
+           document.querySelector('h1')?.textContent?.includes('Welcome');
+  }
+  
+  // Counter to limit how many times we check for the form
+  let formCheckAttempts = 0;
+  const maxFormCheckAttempts = 20; // Stop after 10 seconds (20 * 500ms)
 
   // Wait for the form to be available
   function waitForForm() {
+    // Check if we're still on a registration-like page
+    if (!isRegistrationPage()) {
+      console.log('📍 Not on registration page, stopping form detection');
+      return;
+    }
+    
+    formCheckAttempts++;
+    if (formCheckAttempts > maxFormCheckAttempts) {
+      console.log('⏰ Max form check attempts reached, stopping');
+      return;
+    }
+    
     // Try multiple possible selectors for the registration form
     const form = document.querySelector('form[data-testid="strapi-sign-up"]') ||
                   document.querySelector('form[aria-labelledby="register-admin"]') ||
@@ -16,7 +43,7 @@
       console.log('📋 Registration form found, extending it');
       extendRegistrationForm(form);
     } else {
-      console.log('⏳ Waiting for registration form...');
+      console.log(`⏳ Waiting for registration form... (attempt ${formCheckAttempts}/${maxFormCheckAttempts})`);
       setTimeout(waitForForm, 500);
     }
   }
@@ -522,35 +549,48 @@
   }
 
   // Start the process
-  waitForForm();
-
-  // Also set up a mutation observer to catch dynamically loaded forms
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-        // Check if any new forms were added
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const form = node.querySelector ? 
-              (node.querySelector('form input[name="confirmPassword"]')?.closest('form') || 
-               (node.tagName === 'FORM' && node.querySelector('input[name="confirmPassword"]') ? node : null)) : 
-              null;
-            
-            if (form && !document.getElementById('companyName')) {
-              console.log('🔍 Found dynamically loaded form, extending...');
-              extendRegistrationForm(form);
-            }
-          }
-        });
+  // Only start if we're on a registration page
+  if (isRegistrationPage()) {
+    console.log('📍 On registration page, starting form detection');
+    waitForForm();
+    
+    // Also set up a mutation observer to catch dynamically loaded forms (only on registration page)
+    const observer = new MutationObserver((mutations) => {
+      // Double-check we're still on registration page
+      if (!isRegistrationPage()) {
+        observer.disconnect();
+        console.log('📍 Left registration page, disconnecting mutation observer');
+        return;
       }
+      
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+          // Check if any new forms were added
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const form = node.querySelector ? 
+                (node.querySelector('form input[name="confirmPassword"]')?.closest('form') || 
+                 (node.tagName === 'FORM' && node.querySelector('input[name="confirmPassword"]') ? node : null)) : 
+                null;
+              
+              if (form && !document.getElementById('companyName')) {
+                console.log('🔍 Found dynamically loaded form, extending...');
+                extendRegistrationForm(form);
+              }
+            }
+          });
+        }
+      });
     });
-  });
 
-  // Start observing
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
+    // Start observing (only on registration page)
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
 
-  console.log('👀 Mutation observer set up for dynamic form detection');
+    console.log('👀 Mutation observer set up for dynamic form detection');
+  } else {
+    console.log('📍 Not on registration page, skipping form detection and mutation observer');
+  }
 })(); 
