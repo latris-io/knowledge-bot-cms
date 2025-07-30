@@ -189,154 +189,61 @@ export default {
       
       let isProcessing = false;
       
-      const processRoleDetection = () => {
+      const processRoleDetection = async () => {
         if (isProcessing) return; // Prevent duplicate processing
         isProcessing = true;
         
         try {
           console.log('🔍 [ADMIN APP] Checking if menu items should be hidden...');
           
-          // Immediate role detection logic
-          const pageText = document.body.textContent || '';
-          const pageHtml = document.body.innerHTML || '';
-          
-          // Comprehensive role detection for production environments
-          const detectStandardUser = () => {
-            let detectionMethod = 'none';
-            let detectionDetails = {};
-            
-            // Method 1: Check Strapi admin context
+          // Simple API call to get current user's role
+          const getCurrentUserRole = async () => {
             try {
-              // @ts-ignore - Dynamic Strapi admin context
-              if (window.strapi?.admin?.user) {
-                // @ts-ignore - Dynamic Strapi admin context
-                const user = window.strapi.admin.user;
-                detectionDetails.strapiContext = user;
-                if (user.roles && Array.isArray(user.roles)) {
-                  const hasStandardRole = user.roles.some(role => 
-                    role.name === 'Standard User' || 
-                    role.code === 'standard-user' ||
-                    role.type === 'standard-user' ||
-                    role.name?.toLowerCase().includes('standard')
-                  );
-                  if (hasStandardRole) {
-                    detectionMethod = 'strapi-context';
-                    return { isStandardUser: true, detectionMethod, detectionDetails };
-                  }
+              const response = await fetch('/admin/users/me', {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('strapi-jwt-token')}`
                 }
-              }
-            } catch (e) {
-              console.log('⚠️ [ADMIN APP] Strapi context check failed:', e);
-            }
-            
-            // Method 2: Check localStorage for user/role data
-            try {
-              const storageKeys = ['strapi-user', 'strapi-jwt-token', 'user-role', 'currentUser'];
-              for (const key of storageKeys) {
-                const data = localStorage.getItem(key);
-                if (data) {
-                  detectionDetails[`localStorage_${key}`] = data.substring(0, 100);
-                  if (data.toLowerCase().includes('standard')) {
-                    detectionMethod = `localStorage-${key}`;
-                    return { isStandardUser: true, detectionMethod, detectionDetails };
-                  }
-                }
-              }
-            } catch (e) {
-              console.log('⚠️ [ADMIN APP] localStorage check failed:', e);
-            }
-            
-            // Method 3: Check for API response patterns
-            try {
-              // Check if there are any script tags with role data
-              const scripts = document.querySelectorAll('script');
-              for (const script of scripts) {
-                const content = script.textContent || '';
-                if (content.includes('Standard User') || content.includes('standard-user')) {
-                  detectionMethod = 'script-content';
-                  detectionDetails.scriptContent = content.substring(0, 200);
-                  return { isStandardUser: true, detectionMethod, detectionDetails };
-                }
-              }
-            } catch (e) {
-              console.log('⚠️ [ADMIN APP] Script content check failed:', e);
-            }
-            
-            // Method 4: Check DOM patterns for role indicators
-            try {
-              // Look for user profile elements
-              const roleSelectors = [
-                '[data-testid*="profile"]', '[class*="profile"]',
-                '[data-testid*="user"]', '[class*="user"]', 
-                'header [class*="dropdown"]', '.navbar [role="button"]'
-              ];
+              });
               
-              for (const selector of roleSelectors) {
-                const elements = document.querySelectorAll(selector);
-                for (const element of elements) {
-                  const text = element.textContent?.toLowerCase() || '';
-                  const title = (element instanceof HTMLElement) ? element.title?.toLowerCase() || '' : '';
-                  const ariaLabel = element.getAttribute('aria-label')?.toLowerCase() || '';
-                  
-                  if (text.includes('standard') || title.includes('standard') || ariaLabel.includes('standard')) {
-                    detectionMethod = `dom-${selector}`;
-                    detectionDetails.elementText = element.textContent?.substring(0, 100);
-                    return { isStandardUser: true, detectionMethod, detectionDetails };
-                  }
-                }
+              if (!response.ok) {
+                console.log('⚠️ [ADMIN APP] Failed to fetch current user:', response.status);
+                return { isStandardUser: false, method: 'api-error' };
               }
-            } catch (e) {
-              console.log('⚠️ [ADMIN APP] DOM pattern check failed:', e);
-            }
-            
-            // Method 5: Check permissions/menu restrictions as proxy
-            try {
-              // If user can't see certain admin features, they might be Standard User
-              const adminLinks = document.querySelectorAll('a[href*="/admin/"]');
-              const linkTexts = Array.from(adminLinks).map(link => link.textContent?.trim().toLowerCase()).filter(Boolean);
               
-              detectionDetails.availableLinks = linkTexts;
+              const userData = await response.json();
+              console.log('👤 [ADMIN APP] Current user data:', userData);
               
-              // Standard users typically have restricted access
-              const hasContentManager = linkTexts.some(text => text.includes('content'));
-              const hasSettings = linkTexts.some(text => text.includes('settings'));
-              const hasUserManagement = linkTexts.some(text => text.includes('user'));
+              // Check if user has Standard User role
+              const hasStandardRole = userData.roles?.some(role => 
+                role.name === 'Standard User' || 
+                role.code === 'standard-user' ||
+                role.type === 'standard-user' ||
+                role.name?.toLowerCase().includes('standard')
+              ) || false;
               
-              // If they have very limited links, they might be Standard User
-              if (adminLinks.length < 5 && !hasSettings) {
-                detectionMethod = 'permission-restriction';
-                return { isStandardUser: true, detectionMethod, detectionDetails };
-              }
-            } catch (e) {
-              console.log('⚠️ [ADMIN APP] Permission check failed:', e);
+              return { 
+                isStandardUser: hasStandardRole, 
+                method: 'api-call',
+                userRoles: userData.roles?.map(r => r.name) || [],
+                userId: userData.id
+              };
+              
+            } catch (error) {
+              console.log('❌ [ADMIN APP] Error fetching user role:', error);
+              return { isStandardUser: false, method: 'api-error', error: error.message };
             }
-            
-            // Method 6: Original text-based detection (fallback)
-            const hasStandardText = pageText.includes('Standard User') || pageHtml.includes('Standard User');
-            const hasStandardSlug = pageText.includes('standard-user') || pageHtml.includes('standard-user');
-            
-            if (hasStandardText || hasStandardSlug) {
-              detectionMethod = 'text-pattern';
-              detectionDetails.textMatch = hasStandardText ? 'Standard User' : 'standard-user';
-              return { isStandardUser: true, detectionMethod, detectionDetails };
-            }
-            
-            return { isStandardUser: false, detectionMethod, detectionDetails };
           };
           
-          const { isStandardUser, detectionMethod, detectionDetails } = detectStandardUser();
+          const { isStandardUser, method, userRoles, userId, error } = await getCurrentUserRole();
           
-          console.log('🎭 [ADMIN APP] Comprehensive role detection results:', {
+          console.log('🎭 [ADMIN APP] User role check results:', {
             isStandardUser,
-            detectionMethod,
-            detectionDetails: Object.keys(detectionDetails).length > 0 ? detectionDetails : 'none',
-            basicChecks: {
-              hasStandardUserText: pageText.includes('Standard User'),
-              hasStandardUserHtml: pageHtml.includes('Standard User'),
-              // @ts-ignore - Dynamic Strapi admin context  
-              strapiContextExists: !!window.strapi?.admin?.user,
-              localStorageKeys: Object.keys(localStorage).filter(k => k.includes('strapi') || k.includes('user'))
-            }
+            method,
+            userRoles,
+            userId,
+            error
           });
           
           if (isStandardUser) {
@@ -410,34 +317,21 @@ export default {
         }
       };
       
-      // Set up MutationObserver to react to DOM changes
+      // Set up MutationObserver for DOM changes
       const observer = new MutationObserver((mutations) => {
-        let shouldProcess = false;
+        // Check if any significant changes occurred
+        const hasSignificantChanges = mutations.some(mutation => 
+          mutation.type === 'childList' && mutation.addedNodes.length > 0
+        );
         
-        for (const mutation of mutations) {
-          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-            for (const node of mutation.addedNodes) {
-              if (node.nodeType === Node.ELEMENT_NODE) {
-                const text = node.textContent || '';
-                // Only process if new content might contain user role info
-                if (text.includes('Standard') || text.includes('User') || text.includes('role') || 
-                    text.includes('Manager') || text.includes('Settings')) {
-                  shouldProcess = true;
-                  break;
-                }
-              }
-            }
-            if (shouldProcess) break;
-          }
-        }
-        
-        if (shouldProcess) {
+        if (hasSignificantChanges) {
           console.log('🔄 [ADMIN APP] DOM change detected, checking roles...');
-          processRoleDetection();
+          processRoleDetection().catch(error => {
+            console.log('❌ [ADMIN APP] Error in role detection:', error);
+          });
         }
       });
       
-      // Start observing
       observer.observe(document.body, {
         childList: true,
         subtree: true
@@ -445,20 +339,26 @@ export default {
       
       // Set up storage event listener for auth changes
       window.addEventListener('storage', (event) => {
-        if (event.key === 'strapi-jwt-token' || event.key === null) {
-          console.log('🔑 [ADMIN APP] Auth token change detected');
-          processRoleDetection();
+        if (event.key === 'strapi-jwt-token') {
+          console.log('🔑 [ADMIN APP] Auth token changed, checking roles...');
+          processRoleDetection().catch(error => {
+            console.log('❌ [ADMIN APP] Error in role detection:', error);
+          });
         }
       });
       
-      // Set up window focus listener for tab changes
+      // Set up focus event for tab changes
       window.addEventListener('focus', () => {
-        console.log('🔍 [ADMIN APP] Window focus detected');
-        processRoleDetection();
+        console.log('👁️ [ADMIN APP] Window focused, checking roles...');
+        processRoleDetection().catch(error => {
+          console.log('❌ [ADMIN APP] Error in role detection:', error);
+        });
       });
       
-      // Process immediately
-      processRoleDetection();
+      // Initial check
+      processRoleDetection().catch(error => {
+        console.log('❌ [ADMIN APP] Error in initial role detection:', error);
+      });
       
       console.log('👀 [ADMIN APP] Pure event-driven role detection set up - NO TIMERS');
     };
