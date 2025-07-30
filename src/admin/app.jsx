@@ -448,6 +448,79 @@ export default {
             sampleProfileElements: profileElements.slice(0, 3)
           });
           
+          console.log('�� [ADMIN APP] === ENHANCED ROLE DEBUGGING ===');
+          
+          // Check JWT token payload for role info
+          const jwtToken = localStorage.getItem('strapi-jwt-token');
+          let jwtPayload = null;
+          if (jwtToken) {
+            try {
+              const base64Url = jwtToken.split('.')[1];
+              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+              jwtPayload = JSON.parse(window.atob(base64));
+              console.log('🎫 [ADMIN APP] JWT Token Payload:', jwtPayload);
+            } catch (e) {
+              console.log('❌ [ADMIN APP] Failed to decode JWT token:', e);
+            }
+          }
+          
+          // Check all storage keys for user data
+          const userStorageKeys = Object.keys(localStorage).filter(key => 
+            key.includes('strapi') || key.includes('user') || key.includes('jwt') || key.includes('auth')
+          );
+          console.log('🔑 [ADMIN APP] User-related storage keys:', userStorageKeys.map(key => ({
+            key,
+            value: localStorage.getItem(key)?.substring(0, 100) + '...'
+          })));
+          
+          // More comprehensive role pattern search
+          const rolePatterns = [
+            'Standard User', 'Standard', 'Author', 'Editor', 'Contributor', 'Administrator', 'Super Admin',
+            'standard user', 'standard', 'author', 'editor', 'contributor', 'administrator', 'super admin',
+            'role', 'Role', 'permission', 'Permission'
+          ];
+          
+          const patternResults = {};
+          rolePatterns.forEach(pattern => {
+            const textMatches = (pageText.match(new RegExp(pattern, 'gi')) || []).length;
+            const htmlMatches = (pageHtml.match(new RegExp(pattern, 'gi')) || []).length;
+            if (textMatches > 0 || htmlMatches > 0) {
+              patternResults[pattern] = { textMatches, htmlMatches };
+            }
+          });
+          
+          console.log('🔤 [ADMIN APP] Role patterns found in page:', patternResults);
+          
+          // Check profile/user dropdown elements
+          const userElementSelectors = [
+            '[class*="profile" i]', '[data-testid*="profile" i]',
+            '[class*="dropdown" i]', '[aria-expanded]',
+            'header [class*="user" i]', '.navbar [class*="user" i]'
+          ];
+          
+          const profileInfo = [];
+          userElementSelectors.forEach(selector => {
+            try {
+              const elements = document.querySelectorAll(selector);
+              elements.forEach(el => {
+                if (el.textContent?.trim() && el.textContent.trim().length < 100) {
+                  profileInfo.push({
+                    selector,
+                    text: el.textContent.trim(),
+                    classes: el.className,
+                    attributes: Object.fromEntries(Array.from(el.attributes).map(attr => [attr.name, attr.value]))
+                  });
+                }
+              });
+            } catch (e) {
+              // Skip invalid selectors
+            }
+          });
+          
+          console.log('👤 [ADMIN APP] Profile/user elements found:', profileInfo);
+          
+          console.log('🔍 [ADMIN APP] === END ENHANCED DEBUGGING ===');
+          
           // Check for standard user indicators (role-based approach only)
           const isStandardUser = 
             // Primary: Role from context (most reliable)
@@ -878,5 +951,172 @@ export default {
         console.log('⚠️ [ADMIN APP] User context detection completed without finding context');
       }
     });
+
+    // Enhanced user context search with comprehensive debugging
+    const findUserRoleContext = () => {
+      console.log('🔍 [ADMIN APP] === COMPREHENSIVE USER ROLE DEBUGGING ===');
+      
+      // 1. Check all localStorage keys
+      const allStorageKeys = Object.keys(localStorage);
+      const storageData = {};
+      allStorageKeys.forEach(key => {
+        try {
+          const value = localStorage.getItem(key);
+          storageData[key] = value;
+          if (key.includes('strapi') || key.includes('jwt') || key.includes('token') || key.includes('user')) {
+            console.log(`🔑 [ADMIN APP] Storage key "${key}":`, value?.substring(0, 100) + '...');
+          }
+        } catch (e) {
+          storageData[key] = 'ERROR_READING';
+        }
+      });
+      
+      // 2. Check JWT token payload
+      const jwtToken = localStorage.getItem('strapi-jwt-token') || localStorage.getItem('jwtToken') || localStorage.getItem('authToken');
+      let jwtPayload = null;
+      if (jwtToken) {
+        try {
+          const base64Url = jwtToken.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          jwtPayload = JSON.parse(window.atob(base64));
+          console.log('🎫 [ADMIN APP] JWT Token Payload:', jwtPayload);
+        } catch (e) {
+          console.log('❌ [ADMIN APP] Failed to decode JWT token:', e);
+        }
+      }
+      
+      // 3. Check window.strapi admin context more thoroughly
+      let strapiContext = null;
+      if (window.strapi) {
+        console.log('🌐 [ADMIN APP] Window.strapi structure:', window.strapi);
+        if (window.strapi.admin) {
+          console.log('👤 [ADMIN APP] Window.strapi.admin:', window.strapi.admin);
+          if (window.strapi.admin.user) {
+            console.log('👤 [ADMIN APP] Window.strapi.admin.user:', window.strapi.admin.user);
+            strapiContext = window.strapi.admin.user;
+          }
+        }
+      }
+      
+      // 4. Look for user data in React components (via global React DevTools)
+      let reactUserData = null;
+      if (window.__REACT_DEVTOOLS_GLOBAL_HOOK__ && window.__REACT_DEVTOOLS_GLOBAL_HOOK__.renderers) {
+        console.log('⚛️ [ADMIN APP] React DevTools available, searching for user context...');
+        // This is complex to search through React fiber tree, so we'll skip for now
+      }
+      
+      // 5. Comprehensive DOM text search
+      const bodyText = document.body.textContent || '';
+      const bodyHtml = document.body.innerHTML || '';
+      
+      // Search for various role patterns
+      const rolePatterns = [
+        'Standard User', 'standard user', 'Standard', 'standard',
+        'Author', 'author', 'Editor', 'editor', 'Contributor', 'contributor',
+        'User', 'user', 'Role', 'role', 'Permission', 'permission'
+      ];
+      
+      const foundPatterns = {};
+      rolePatterns.forEach(pattern => {
+        foundPatterns[pattern] = {
+          inText: bodyText.includes(pattern),
+          inHtml: bodyHtml.includes(pattern),
+          textCount: (bodyText.match(new RegExp(pattern, 'gi')) || []).length,
+          htmlCount: (bodyHtml.match(new RegExp(pattern, 'gi')) || []).length
+        };
+      });
+      
+      console.log('🔤 [ADMIN APP] Role pattern search results:', foundPatterns);
+      
+      // 6. Search for specific DOM elements that might contain role info
+      const roleSelectors = [
+        '[data-user-role]', '[data-role]', '[role]',
+        '.user-role', '.role', '.permission',
+        '[aria-label*="user" i]', '[aria-label*="role" i]',
+        '[title*="user" i]', '[title*="role" i]',
+        'span:contains("Standard")', 'div:contains("User")',
+        '.profile', '.user-profile', '.account',
+        '[class*="profile" i]', '[class*="user" i]', '[class*="role" i]'
+      ];
+      
+      const foundElements = [];
+      roleSelectors.forEach(selector => {
+        try {
+          const element = document.querySelector(selector);
+          if (element) {
+            foundElements.push({
+              selector,
+              element,
+              text: element.textContent,
+              html: element.innerHTML,
+              attributes: Array.from(element.attributes).map(attr => ({name: attr.name, value: attr.value}))
+            });
+          }
+        } catch (e) {
+          // Some selectors might not be valid, skip them
+        }
+      });
+      
+      console.log('🎯 [ADMIN APP] Found DOM elements with potential role info:', foundElements);
+      
+      // 7. Check for API request/response data in network tab (via performance API)
+      const performanceEntries = performance.getEntriesByType('navigation').concat(
+        performance.getEntriesByType('resource')
+      );
+      
+      const apiRequests = performanceEntries.filter(entry => 
+        entry.name.includes('/admin/users/me') || 
+        entry.name.includes('/admin/users') ||
+        entry.name.includes('/api/users') ||
+        entry.name.includes('user') ||
+        entry.name.includes('auth')
+      );
+      
+      console.log('🌐 [ADMIN APP] User-related API requests found:', apiRequests);
+      
+      // 8. Try to find user profile elements
+      const profileSelectors = [
+        '[data-testid*="profile" i]',
+        '[class*="profile" i]',
+        '[class*="header" i] [class*="user" i]',
+        'header [class*="dropdown" i]',
+        '.navbar .user', '.header .user',
+        '[aria-expanded="false"]', '[aria-expanded="true"]'
+      ];
+      
+      const profileElements = [];
+      profileSelectors.forEach(selector => {
+        try {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(element => {
+            if (element.textContent && element.textContent.trim()) {
+              profileElements.push({
+                selector,
+                text: element.textContent.trim(),
+                html: element.innerHTML,
+                classes: element.className
+              });
+            }
+          });
+        } catch (e) {
+          // Skip invalid selectors
+        }
+      });
+      
+      console.log('👤 [ADMIN APP] Profile elements found:', profileElements);
+      
+      // Return comprehensive data
+      return {
+        localStorage: storageData,
+        jwtPayload,
+        strapiContext,
+        foundPatterns,
+        foundElements,
+        profileElements,
+        apiRequests: apiRequests.map(req => req.name)
+      };
+    };
+
+    const comprehensiveDebugData = findUserRoleContext();
   }
 }; 
