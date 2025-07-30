@@ -193,65 +193,58 @@ export default {
       const hideDashboardWidgets = () => {
         console.log('🏠 [ADMIN APP] Hiding dashboard widgets for Standard User...');
         
-        // Look for dashboard widgets with various selectors
-        const widgetSelectors = [
-          // Text-based selectors
-          'h2:contains("Last Edited Entries")',
-          'h2:contains("Last Published Entries")', 
-          'h3:contains("Last Edited Entries")',
-          'h3:contains("Last Published Entries")',
-          // Data attribute selectors
-          '[data-testid*="recent-documents"]',
-          '[data-testid*="last-edited"]',
-          '[data-testid*="last-published"]',
-        ];
-        
         let widgetHiddenCount = 0;
         
-        // Search for widgets by text content
+        // Debug: Log all headings to see what's actually available
+        const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        console.log('🔍 [ADMIN APP] DEBUG: All headings found:', Array.from(allHeadings).map(h => h.textContent?.trim()));
+        
+                // Search for widgets by EXACT heading text only (much more precise)
         const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
         headings.forEach(heading => {
           const text = heading.textContent?.trim() || '';
           
-          if (text.includes('Last Edited Entries') || text.includes('Last Published Entries')) {
-            // Find the widget container (parent div/section)
-            let container = heading.closest('div[class*="Widget"]') || 
-                           heading.closest('div[class*="Card"]') ||
-                           heading.closest('div[class*="Grid-item"]') ||
-                           heading.closest('section') ||
-                           heading.closest('div');
+          // Only match EXACT widget titles, not content that contains them
+          const isExactLastEditedWidget = text === 'Last edited entries' || text === 'Last Edited Entries';
+          const isExactLastPublishedWidget = text === 'Last published entries' || text === 'Last Published Entries';
+          
+          if (isExactLastEditedWidget || isExactLastPublishedWidget) {
+            console.log(`🔍 [ADMIN APP] DEBUG: Found exact widget heading: "${text}"`);
             
-            if (container instanceof HTMLElement) {
-              container.style.display = 'none';
-              container.style.visibility = 'hidden';
-              container.style.opacity = '0';
-              container.style.height = '0';
-              container.style.overflow = 'hidden';
+            // Find the closest widget container, but be very specific and safe
+            let container = heading.closest('[class*="Widget"]') || 
+                           heading.closest('[class*="Card"]') ||
+                           heading.closest('[data-testid*="widget"]') ||
+                           heading.closest('[data-testid*="recent"]');
+            
+            // If no specific widget container, try parent but with safety checks
+            if (!container) {
+              let parent = heading.parentElement;
+              // Go up max 3 levels and avoid body/html
+              for (let i = 0; i < 3 && parent && parent.tagName !== 'BODY' && parent.tagName !== 'HTML'; i++) {
+                if (parent.tagName === 'DIV' || parent.tagName === 'SECTION' || parent.tagName === 'ARTICLE') {
+                  container = parent;
+                  break;
+                }
+                parent = parent.parentElement;
+              }
+            }
+            
+            if (container instanceof HTMLElement && 
+                container.tagName !== 'BODY' && 
+                container.tagName !== 'HTML' &&
+                container.tagName !== 'MAIN') {
+              // Add CSS class instead of inline styles for better debugging
+              container.classList.add('strapi-standard-user-hidden-widget');
               
               widgetHiddenCount++;
-              console.log(`🚫 [ADMIN APP] Hidden dashboard widget: "${text}"`);
+              console.log(`🚫 [ADMIN APP] Hidden dashboard widget: "${text}" (container: ${container.tagName}${container.className ? '.' + container.className.split(' ').join('.') : ''})`);
+            } else {
+              console.log(`⚠️ [ADMIN APP] Skipped hiding widget "${text}" - container too broad or unsafe`);
             }
           }
         });
-        
-        // Also search by data attributes
-        widgetSelectors.forEach(selector => {
-          if (!selector.includes('contains')) { // Skip text-based selectors for querySelectorAll
-            const elements = document.querySelectorAll(selector);
-            elements.forEach(element => {
-              if (element instanceof HTMLElement) {
-                element.style.display = 'none';
-                element.style.visibility = 'hidden';
-                element.style.opacity = '0';
-                element.style.height = '0';
-                element.style.overflow = 'hidden';
-                
-                widgetHiddenCount++;
-                console.log(`🚫 [ADMIN APP] Hidden dashboard widget by selector: "${selector}"`);
-              }
-            });
-          }
-        });
+
         
         console.log(`✅ [ADMIN APP] Dashboard widget hiding complete - ${widgetHiddenCount} widgets hidden`);
       };
@@ -365,28 +358,15 @@ export default {
                 }
 
                 /* Hide Dashboard Widgets for Standard Users */
-                /* Target the dashboard widgets by various selectors */
-                [data-testid*="recent-documents"],
-                [data-testid*="last-edited"],
-                [data-testid*="last-published"],
-                div:has(h2:contains("Last Edited Entries")),
-                div:has(h2:contains("Last Published Entries")),
-                div:has(h3:contains("Last Edited Entries")),
-                div:has(h3:contains("Last Published Entries")),
-                /* Generic dashboard widget containers */
-                div[class*="Widget"]:has([data-testid*="recent"]),
-                div[class*="Card"]:has(h2:contains("Last")),
-                div[class*="Card"]:has(h3:contains("Last")),
-                /* Grid items containing these widgets */
-                div[class*="Grid-item"]:has(h2:contains("Last Edited")),
-                div[class*="Grid-item"]:has(h2:contains("Last Published")),
-                div[class*="Grid-item"]:has(h3:contains("Last Edited")),
-                div[class*="Grid-item"]:has(h3:contains("Last Published")) {
+                /* Class-based hiding applied by JavaScript */
+                .strapi-standard-user-hidden-widget {
                   display: none !important;
                   visibility: hidden !important;
                   opacity: 0 !important;
                   height: 0 !important;
                   overflow: hidden !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
                 }
               `;
               document.head.appendChild(style);
