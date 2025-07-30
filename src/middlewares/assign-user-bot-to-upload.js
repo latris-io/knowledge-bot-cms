@@ -1,7 +1,5 @@
 'use strict';
 
-const jwt = require('jsonwebtoken');
-
 /**
  * `assign-user-bot-to-upload` middleware
  * This middleware automatically assigns user, bot, and company relations to uploaded files.
@@ -32,72 +30,32 @@ module.exports = (config, { strapi }) => {
     const eventType = isReplacement ? 'updated' : 'created';
     console.log(`📌 Upload event type: ${eventType} (isReplacement: ${isReplacement})`);
     
-    // Get user context from JWT token (handle both admin and users-permissions tokens)
-    let user = null;
-    const authHeader = ctx.request.header.authorization;
-    console.log('🔍 Authorization header:', authHeader ? 'Present' : 'Missing');
+    // Get the authenticated user from Strapi context (much cleaner!)
+    let user = ctx.state.user;
+    console.log('🔍 ctx.state.user:', user ? { id: user.id, email: user.email } : 'null');
+    console.log('🔍 ctx.state.admin:', ctx.state.admin ? { id: ctx.state.admin.id, email: ctx.state.admin.email } : 'null');
     
-    if (authHeader?.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        const adminJwtSecret = strapi.config.get('admin.jwtSecret') || process.env.ADMIN_JWT_SECRET;
-        
-        // First, try admin JWT authentication
-        try {
-          if (adminJwtSecret) {
-            const decoded = jwt.verify(token, adminJwtSecret);
-            console.log('🔍 Admin JWT decoded:', { id: typeof decoded === 'object' && decoded?.id, type: 'admin' });
-            
-            if (typeof decoded === 'object' && decoded && decoded.id) {
-              // This is an admin user - find corresponding users-permissions user by email
-              const adminUser = await strapi.entityService.findOne(
-                'admin::user',
-                decoded.id,
-                { populate: ['roles'] }
-              );
-              console.log('🔍 Found admin user:', adminUser ? { id: adminUser.id, email: adminUser.email } : 'null');
-              
-              if (adminUser?.email) {
-                // Find corresponding users-permissions user by email
-                const usersPermissionsUsers = await strapi.entityService.findMany(
-                  'plugin::users-permissions.user',
-                  {
-                    filters: { email: adminUser.email },
-                    populate: ['company']
-                  }
-                );
-                
-                if (usersPermissionsUsers && usersPermissionsUsers.length > 0) {
-                  user = usersPermissionsUsers[0];
-                  console.log('✅ Found corresponding users-permissions user:', { id: user.id, email: user.email, company: user.company?.id });
-                } else {
-                  console.log('⚠️ No users-permissions user found for admin email:', adminUser.email);
-                }
-              }
-            }
-          }
-        } catch (adminJwtError) {
-          console.log('🔍 Admin JWT verification failed, trying users-permissions JWT:', adminJwtError.message);
-          
-          // If admin JWT fails, try users-permissions JWT
-          const userJwtSecret = strapi.config.get('server.jwtSecret') || process.env.JWT_SECRET;
-          if (userJwtSecret) {
-            const decoded = jwt.verify(token, userJwtSecret);
-            console.log('🔍 Users-permissions JWT decoded:', { id: typeof decoded === 'object' && decoded?.id, type: 'user' });
-            
-            if (typeof decoded === 'object' && decoded && decoded.id) {
-              user = await strapi.entityService.findOne(
-                'plugin::users-permissions.user',
-                decoded.id,
-                { populate: ['company'] }
-              );
-              console.log('✅ Found users-permissions user:', user ? { id: user.id, email: user.email, company: user.company?.id } : 'null');
-            }
-          }
-        }
-        
-      } catch (err) {
-        console.error('🔴 JWT verification completely failed:', err.message);
+    if (!user && ctx.state.admin) {
+      // For admin users, find the corresponding users-permissions user by email
+      console.log('🔄 Admin user detected, finding corresponding users-permissions user...');
+      const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+        filters: { email: ctx.state.admin.email },
+        limit: 1,
+        populate: ['company']
+      });
+      user = users[0];
+      console.log('✅ Found corresponding users-permissions user:', user ? { id: user.id, email: user.email, company: user.company?.id } : 'null');
+    } else if (user) {
+      // Reload user to ensure company is populated
+      console.log('🔄 Reloading user to populate company...');
+      const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+        filters: { documentId: user.documentId },
+        limit: 1,
+        populate: ['company']
+      });
+      if (users && users.length > 0) {
+        user = users[0];
+        console.log('✅ User reloaded with company:', user ? { id: user.id, email: user.email, company: user.company?.id } : 'null');
       }
     }
     
@@ -273,7 +231,7 @@ module.exports = (config, { strapi }) => {
         isArray: Array.isArray(body)
       });
     }
-  };
-};
+  }; // closes async (ctx, next) => {
+}; // closes module.exports
 
 
