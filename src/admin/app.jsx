@@ -182,233 +182,401 @@ export default {
     // Inject widget scripts immediately
     injectAiBotWidget();
     
-    // Improved approach: hide Content Manager and Settings for Standard User role
+    // Enhanced approach: hide Content Manager and Settings for Standard User role
     const hideMenuItemsForStandardUsers = () => {
       console.log('🔍 [ADMIN APP] Checking if menu items should be hidden...');
       
       // Wait a bit for the admin panel to fully load
       setTimeout(() => {
         try {
-          // Try to access user role information from Strapi admin context
+          // Enhanced user role detection with multiple methods
           let userRoleFromContext = null;
+          let userEmailFromContext = null;
+          let detectionMethod = 'none';
+          
           try {
-            // Check if Strapi admin app context is available (suppress TS errors for dynamic properties)
-            // @ts-ignore
+            // Method 1: Check Strapi admin global context
             const globalWindow = window;
-            // @ts-ignore
+            // @ts-ignore - Dynamic Strapi admin context
             if (globalWindow.strapi && 
                 globalWindow.strapi.admin && 
                 globalWindow.strapi.admin.user) {
-              // @ts-ignore
+              // @ts-ignore - Dynamic Strapi admin context  
               const user = globalWindow.strapi.admin.user;
               console.log('🔍 [ADMIN APP] Found Strapi user context:', user);
-              if (user.roles && Array.isArray(user.roles) && user.roles.length > 0) {
-                userRoleFromContext = user.roles[0].name;
-                console.log('🔍 [ADMIN APP] User role from context:', userRoleFromContext);
+              // @ts-ignore - Dynamic user object properties
+              userEmailFromContext = user['email'];
+              // @ts-ignore - Dynamic user object properties
+              if (user['roles'] && Array.isArray(user['roles']) && user['roles'].length > 0) {
+                // @ts-ignore - Dynamic user object properties
+                userRoleFromContext = user['roles'][0]['name'];
+                detectionMethod = 'strapi_global_context';
+                console.log('✅ [ADMIN APP] User role from Strapi context:', userRoleFromContext);
               }
             }
             
-            // Also check React context if available
-            if (!userRoleFromContext && globalWindow.React) {
-              console.log('🔍 [ADMIN APP] Attempting to find user role in React context...');
-              // This would require more complex context inspection
+            // Method 2: Check if we can find role in Redux store (common in Strapi admin)
+            // @ts-ignore - Redux DevTools extension
+            if (!userRoleFromContext && globalWindow.__REDUX_DEVTOOLS_EXTENSION__) {
+              console.log('🔍 [ADMIN APP] Attempting Redux store inspection...');
+              // This would require more complex store inspection
             }
+            
+            // Method 3: Check for role in localStorage or sessionStorage
+            if (!userRoleFromContext) {
+              const strapiAuth = localStorage.getItem('strapi-jwt-token') || sessionStorage.getItem('strapi-jwt-token');
+              if (strapiAuth) {
+                console.log('🔍 [ADMIN APP] Found auth token, checking for role info...');
+                // JWT decode might reveal role info (though it's not typical)
+              }
+            }
+            
           } catch (contextError) {
-            console.log('🔍 [ADMIN APP] Could not access user context:', contextError.message);
+            console.log('⚠️ [ADMIN APP] Could not access user context:', contextError.message);
           }
-          // Multiple detection methods for better reliability
+          
+          // Enhanced DOM-based detection methods
           const pageText = document.body.textContent || '';
           const pageHtml = document.body.innerHTML || '';
+          
+          // Look for user role in various UI locations
+          const roleSelectors = [
+            '[data-testid*="role"]',
+            '[class*="role"]', 
+            '[class*="user-role"]',
+            '.user-role',
+            '[aria-label*="role"]',
+            // Strapi-specific selectors
+            '[class*="UserInfo"]',
+            '[class*="Profile"]',
+            '[data-strapi*="role"]',
+            // Look in dropdowns and user menus
+            '[class*="dropdown"] [class*="role"]',
+            '[class*="menu"] [class*="role"]',
+            '[class*="user"] [class*="role"]'
+          ];
+          
+          let domRoleText = null;
+          for (const selector of roleSelectors) {
+            const element = document.querySelector(selector);
+            if (element && element.textContent) {
+              domRoleText = element.textContent.trim();
+              if (domRoleText.includes('Standard User')) {
+                detectionMethod = `dom_selector_${selector}`;
+                console.log('✅ [ADMIN APP] Found Standard User role via DOM selector:', selector, domRoleText);
+                break;
+              }
+            }
+          }
+          
+          // Look for role information in the user profile/settings area
+          const profileSelectors = [
+            'header [class*="user"]',
+            '[class*="topbar"] [class*="user"]',
+            '[class*="navbar"] [class*="user"]',
+            '[data-testid*="user"]',
+            '[aria-label*="user"]'
+          ];
+          
+          for (const selector of profileSelectors) {
+            const profileArea = document.querySelector(selector);
+            if (profileArea && profileArea.textContent && profileArea.textContent.includes('Standard User')) {
+              detectionMethod = `profile_${selector}`;
+              console.log('✅ [ADMIN APP] Found Standard User role in profile area:', selector);
+              break;
+            }
+          }
           
           // Check for standard user indicators (role-based approach only)
           const isStandardUser = 
             // Primary: Role from context (most reliable)
             userRoleFromContext === 'Standard User' ||
-            // Role-based detection (works for any user with Standard User role)
+            // DOM-based detection
+            domRoleText?.includes('Standard User') ||
+            // Fallback: text-based detection
             pageText.includes('Standard User') ||
             pageHtml.includes('Standard User') ||
-            // Look for role information in common Strapi admin locations
             pageText.includes('standard-user') ||
-            pageHtml.includes('standard-user') ||
-            // Check if user profile/settings show Standard User role
-            document.querySelector('[data-testid*="role"]')?.textContent?.includes('Standard User') ||
-            document.querySelector('[class*="role"]')?.textContent?.includes('Standard User');
+            pageHtml.includes('standard-user');
           
-          console.log('🎭 [ADMIN APP] Standard user detected:', isStandardUser);
-          console.log('🔍 [ADMIN APP] Detection details:', {
-            roleFromContext: userRoleFromContext,
+          console.log('🎭 [ADMIN APP] User role detection results:', {
+            isStandardUser,
+            detectionMethod,
+            userRoleFromContext,
+            userEmailFromContext,
+            domRoleText,
             hasStandardUserText: pageText.includes('Standard User'),
             hasStandardUserHtml: pageHtml.includes('Standard User'),
             hasStandardUserLowercase: pageText.includes('standard-user'),
-            hasRoleSelector: !!document.querySelector('[data-testid*="role"]')?.textContent?.includes('Standard User'),
-            hasClassRoleSelector: !!document.querySelector('[class*="role"]')?.textContent?.includes('Standard User')
+            foundRoleSelectors: roleSelectors.filter(sel => document.querySelector(sel)).length
           });
           
           // Only hide if we detect the standard user
           if (isStandardUser) {
             console.log('🚫 [ADMIN APP] Hiding Content Manager, Settings, and Media Library for Standard User role');
+            console.log('🔧 [ADMIN APP] Detection method used:', detectionMethod);
             
-            // Improved CSS to hide Content Manager, Settings, and Media Library
+            // Remove any existing style to avoid duplicates
+            const existingStyle = document.querySelector('style[data-hide-menu-items="true"]');
+            if (existingStyle) {
+              existingStyle.remove();
+            }
+            
+            // Enhanced CSS with more specific Strapi admin selectors
             const style = document.createElement('style');
             style.setAttribute('data-hide-menu-items', 'true');
             style.textContent = `
-              /* Hide Content Manager - Multiple selector approaches */
+              /* CONTENT MANAGER HIDING - Enhanced Strapi-specific selectors */
+              /* Direct href matches */
               a[href="/admin/content-manager"],
               a[href*="/content-manager"],
-              [href*="/content-manager"],
               nav a[href*="content-manager"],
-              [data-testid*="content-manager"],
-              a:has-text("Content Manager") { 
-                display: none !important; 
-                visibility: hidden !important;
-              }
               
-              /* Hide parent list items */
+              /* Menu structure matches */
+              [data-strapi*="content-manager"],
+              [class*="MenuItem"] a[href*="content-manager"],
+              [class*="MenuLink"] a[href*="content-manager"],
+              
+              /* Parent containers */
               li:has(a[href*="content-manager"]),
-              nav li:has(a[href*="content-manager"]) { 
+              [class*="MenuItem"]:has(a[href*="content-manager"]),
+              [class*="MenuLink"]:has(a[href*="content-manager"]),
+              
+              /* Text-based matching for robust coverage */
+              a:has-text("Content Manager"),
+              li:has(a:has-text("Content Manager")),
+              [role="menuitem"]:has(a:has-text("Content Manager")) {
                 display: none !important; 
                 visibility: hidden !important;
+                opacity: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
               }
               
-              /* Hide Settings - Multiple selector approaches */
+              /* SETTINGS HIDING - Enhanced Strapi-specific selectors */
+              /* Direct href matches - be specific to avoid hiding custom settings */
               a[href="/admin/settings"],
-              a[href*="/settings"],
-              [href*="/settings"],
-              nav a[href*="/settings"],
-              [data-testid*="settings"],
-              a:has-text("Settings") { 
+              a[href="/admin/settings/"]:not([href*="billing"]):not([href*="subscription"]):not([href*="bot"]),
+              nav a[href="/admin/settings"],
+              
+              /* Menu structure matches */
+              [data-strapi*="settings"],
+              [class*="MenuItem"] a[href="/admin/settings"],
+              [class*="MenuLink"] a[href="/admin/settings"],
+              
+              /* Parent containers */
+              li:has(a[href="/admin/settings"]),
+              [class*="MenuItem"]:has(a[href="/admin/settings"]),
+              [class*="MenuLink"]:has(a[href="/admin/settings"]),
+              
+              /* Text-based but specific to avoid custom settings */
+              a:has-text("Settings"):not(:has-text("Billing")):not(:has-text("Bot")):not(:has-text("Subscription")),
+              li:has(a:has-text("Settings"):not(:has-text("Billing")):not(:has-text("Bot"))),
+              [role="menuitem"]:has(a:has-text("Settings"):not(:has-text("Billing"))) {
                 display: none !important; 
                 visibility: hidden !important;
+                opacity: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
               }
               
-              /* Hide parent list items */
-              li:has(a[href*="/settings"]),
-              nav li:has(a[href*="/settings"]) { 
-                display: none !important; 
-                visibility: hidden !important;
-              }
-              
-              /* Hide Media Library - Multiple selector approaches */
+              /* MEDIA LIBRARY HIDING - Enhanced Strapi-specific selectors */
+              /* Direct href matches */
               a[href="/admin/plugins/upload"],
               a[href*="/plugins/upload"],
-              [href*="/plugins/upload"],
               nav a[href*="plugins/upload"],
-              [data-testid*="media-library"],
-              a:has-text("Media Library") { 
-                display: none !important; 
-                visibility: hidden !important;
-              }
               
-              /* Hide parent list items */
+              /* Menu structure matches */
+              [data-strapi*="media"],
+              [data-strapi*="upload"],
+              [class*="MenuItem"] a[href*="/plugins/upload"],
+              [class*="MenuLink"] a[href*="/plugins/upload"],
+              
+              /* Parent containers */
               li:has(a[href*="/plugins/upload"]),
-              nav li:has(a[href*="/plugins/upload"]) { 
+              [class*="MenuItem"]:has(a[href*="/plugins/upload"]),
+              [class*="MenuLink"]:has(a[href*="/plugins/upload"]),
+              
+              /* Text-based matching */
+              a:has-text("Media Library"),
+              li:has(a:has-text("Media Library")),
+              [role="menuitem"]:has(a:has-text("Media Library")) {
                 display: none !important; 
                 visibility: hidden !important;
+                opacity: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
               }
               
-              /* More aggressive selectors */
+              /* AGGRESSIVE FALLBACK SELECTORS */
+              /* Catch any remaining instances with generic class/structure patterns */
               [class*="menu"] a[href*="content-manager"],
               [class*="nav"] a[href*="content-manager"],
               [class*="sidebar"] a[href*="content-manager"],
-              [class*="menu"] a[href*="/settings"],
-              [class*="nav"] a[href*="/settings"],
-              [class*="sidebar"] a[href*="/settings"],
+              [class*="menu"] a[href="/admin/settings"],
+              [class*="nav"] a[href="/admin/settings"], 
+              [class*="sidebar"] a[href="/admin/settings"],
               [class*="menu"] a[href*="/plugins/upload"],
               [class*="nav"] a[href*="/plugins/upload"],
               [class*="sidebar"] a[href*="/plugins/upload"] {
                 display: none !important; 
                 visibility: hidden !important;
+                opacity: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
               }
             `;
             document.head.appendChild(style);
-            console.log('💉 [ADMIN APP] CSS injected to hide Content Manager, Settings, and Media Library');
+            console.log('💉 [ADMIN APP] Enhanced CSS injected to hide Content Manager, Settings, and Media Library');
             
-            // Enhanced JavaScript-based hiding function
+            // Enhanced JavaScript-based hiding function with better Strapi detection
             const hideMenuItemsJS = () => {
-              console.log('🔧 [ADMIN APP] Running JavaScript menu hiding...');
+              console.log('🔧 [ADMIN APP] Running enhanced JavaScript menu hiding...');
               
-              // Find all links and check them
-              const allLinks = document.querySelectorAll('a, [href]');
+              // Get all navigation elements more specifically
+              const navSelectors = [
+                'nav a', 
+                '[role="navigation"] a',
+                '[class*="Menu"] a',
+                '[class*="Nav"] a',
+                '[class*="Sidebar"] a',
+                'aside a',
+                '[data-strapi] a'
+              ];
+              
               let hiddenCount = 0;
               
-              allLinks.forEach(link => {
-                // Type-safe property access
-                const href = (link instanceof HTMLAnchorElement ? link.href : link.getAttribute('href')) || '';
-                const text = link.textContent ? link.textContent.trim() : '';
-                
-                // Check if this is a Content Manager, Settings, or Media Library link
-                const isContentManager = href.includes('content-manager') || text === 'Content Manager';
-                const isSettings = href.includes('/settings') && !href.includes('subscription') && !href.includes('billing') || text === 'Settings';
-                const isMediaLibrary = href.includes('/plugins/upload') || text === 'Media Library';
-                
-                if (isContentManager || isSettings || isMediaLibrary) {
-                  // Hide the link (with type checking)
-                  if (link instanceof HTMLElement) {
+              navSelectors.forEach(selector => {
+                const links = document.querySelectorAll(selector);
+                links.forEach(link => {
+                  if (!(link instanceof HTMLElement)) return;
+                  
+                  const href = link.getAttribute('href') || '';
+                  const text = link.textContent ? link.textContent.trim() : '';
+                  
+                  // More specific matching logic
+                  const isContentManager = 
+                    href.includes('content-manager') || 
+                    text === 'Content Manager' ||
+                    link.getAttribute('data-strapi') === 'content-manager';
+                    
+                  const isSettings = 
+                    (href === '/admin/settings' || href === '/admin/settings/') &&
+                    !href.includes('billing') && 
+                    !href.includes('subscription') && 
+                    !href.includes('bot') ||
+                    (text === 'Settings' && 
+                     !text.includes('Billing') && 
+                     !text.includes('Bot') && 
+                     !text.includes('Subscription'));
+                    
+                  const isMediaLibrary = 
+                    href.includes('/plugins/upload') || 
+                    text === 'Media Library' ||
+                    link.getAttribute('data-strapi') === 'media-library';
+                  
+                  if (isContentManager || isSettings || isMediaLibrary) {
+                    // Hide the link itself
                     link.style.display = 'none';
                     link.style.visibility = 'hidden';
+                    link.style.opacity = '0';
+                    
+                    // Hide parent elements more aggressively
+                    const parents = [
+                      link.closest('li'),
+                      link.closest('[role="menuitem"]'),
+                      link.closest('[class*="MenuItem"]'),
+                      link.closest('[class*="MenuLink"]'),
+                      link.closest('div[role="menuitem"]'), 
+                      link.closest('div[class*="menu"]')
+                    ];
+                    
+                    parents.forEach(parent => {
+                      if (parent instanceof HTMLElement) {
+                        parent.style.display = 'none';
+                        parent.style.visibility = 'hidden';
+                        parent.style.opacity = '0';
+                        parent.style.height = '0';
+                        parent.style.overflow = 'hidden';
+                      }
+                    });
+                    
+                    hiddenCount++;
+                    console.log(`🚫 [ADMIN APP] Hidden menu item: "${text}" (${href})`);
                   }
-                  
-                  // Hide parent elements
-                  const parentLi = link.closest('li');
-                  const parentNav = link.closest('nav');
-                  const parentDiv = link.closest('div[role="menuitem"], div[class*="menu"]');
-                  
-                  if (parentLi instanceof HTMLElement) {
-                    parentLi.style.display = 'none';
-                    parentLi.style.visibility = 'hidden';
-                  }
-                  if (parentDiv instanceof HTMLElement) {
-                    parentDiv.style.display = 'none';
-                    parentDiv.style.visibility = 'hidden';
-                  }
-                  
-                  hiddenCount++;
-                  console.log(`🚫 [ADMIN APP] Hidden: ${text || href}`);
-                }
+                });
               });
               
-              console.log(`🔧 [ADMIN APP] Hidden ${hiddenCount} menu items`);
+              console.log(`🔧 [ADMIN APP] JavaScript hiding completed - ${hiddenCount} items hidden`);
+              return hiddenCount;
             };
             
-            // Apply JavaScript hiding immediately
-            hideMenuItemsJS();
+            // Apply JavaScript hiding immediately and track results
+            const immediateHiddenCount = hideMenuItemsJS();
             
-            // Set up observer to catch dynamically added elements
+            // Enhanced MutationObserver to catch dynamic content
             const observer = new MutationObserver((mutations) => {
-              let shouldCheck = false;
+              let shouldRecheck = false;
+              
               mutations.forEach(mutation => {
                 if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                  // Check if any added nodes contain links
-                                     mutation.addedNodes.forEach(node => {
-                     if (node.nodeType === Node.ELEMENT_NODE && node instanceof Element) {
-                       const hasLinks = node.tagName === 'A' || node.querySelector('a, [href]');
-                       if (hasLinks) shouldCheck = true;
-                     }
-                   });
+                  mutation.addedNodes.forEach(node => {
+                    if (node.nodeType === Node.ELEMENT_NODE && node instanceof Element) {
+                      // Check if the added node contains navigation elements
+                      const hasNavElements = 
+                        node.tagName === 'A' || 
+                        node.tagName === 'NAV' ||
+                        node.querySelector('a, nav, [role="navigation"], [class*="Menu"], [class*="Nav"]');
+                      if (hasNavElements) {
+                        shouldRecheck = true;
+                        console.log('🔄 [ADMIN APP] Navigation elements added, will recheck menu hiding');
+                      }
+                    }
+                  });
                 }
               });
               
-              if (shouldCheck) {
-                setTimeout(hideMenuItemsJS, 100);
+              if (shouldRecheck) {
+                setTimeout(() => {
+                  const newHiddenCount = hideMenuItemsJS();
+                  if (newHiddenCount > 0) {
+                    console.log(`🔄 [ADMIN APP] Mutation observer hid ${newHiddenCount} additional items`);
+                  }
+                }, 100);
               }
             });
             
             observer.observe(document.body, {
               childList: true,
-              subtree: true
+              subtree: true,
+              attributes: false // Don't watch attributes to reduce noise
             });
-
-            // Apply with multiple delays to catch different loading stages
-            setTimeout(hideMenuItemsJS, 500);
-            setTimeout(hideMenuItemsJS, 1000);
-            setTimeout(hideMenuItemsJS, 2000);
-            setTimeout(hideMenuItemsJS, 3000);
-            setTimeout(hideMenuItemsJS, 5000);
-        } else {
-            console.log('✅ [ADMIN APP] Not Standard User role - Content Manager, Settings, and Media Library remain visible');
-        }
-      } catch (error) {
+            
+            // Apply with staggered delays to catch different loading stages
+            const delays = [500, 1000, 2000, 3000, 5000];
+            delays.forEach(delay => {
+              setTimeout(() => {
+                const delayedHiddenCount = hideMenuItemsJS();
+                if (delayedHiddenCount > 0) {
+                  console.log(`🔄 [ADMIN APP] Delayed hiding (${delay}ms) caught ${delayedHiddenCount} additional items`);
+                }
+              }, delay);
+            });
+            
+            console.log('✅ [ADMIN APP] Standard User menu hiding fully configured');
+            
+          } else {
+            console.log('✅ [ADMIN APP] Not a Standard User - Content Manager, Settings, and Media Library remain visible');
+            console.log('🔍 [ADMIN APP] Current role detection:', {
+              userRoleFromContext,
+              userEmailFromContext,
+              detectionMethod,
+              pageContainsStandardUser: pageText.includes('Standard User')
+            });
+          }
+        } catch (error) {
           console.error('❌ [ADMIN APP] Error in hideMenuItemsForStandardUsers:', error);
+          console.error('❌ [ADMIN APP] Error stack:', error.stack);
         }
       }, 1000);
     };
