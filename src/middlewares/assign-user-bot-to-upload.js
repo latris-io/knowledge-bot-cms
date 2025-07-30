@@ -74,44 +74,62 @@ module.exports = (config, { strapi }) => {
       if (authHeader) {
         try {
           const token = authHeader.replace('Bearer ', '');
-          console.log('🔍 Found authorization token, attempting to verify...');
+          console.log('🔍 Found authorization token (length:', token.length, '), attempting to verify...');
           
           // Try admin JWT first
           try {
             const adminJwtService = strapi.service('admin::token');
+            if (!adminJwtService) {
+              throw new Error('Admin JWT service not available');
+            }
             const adminPayload = await adminJwtService.decodeJwtToken(token);
-            console.log('✅ Admin JWT verified:', { id: adminPayload.id, email: adminPayload.email });
+            console.log('🔍 Raw admin JWT payload:', JSON.stringify(adminPayload, null, 2));
+            console.log('✅ Admin JWT verified:', { id: adminPayload?.id, email: adminPayload?.email });
             
             // Find corresponding users-permissions user
-            const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
-              filters: { email: adminPayload.email },
-              limit: 1,
-              populate: ['company']
-            });
-            user = users[0];
-            console.log('✅ Found users-permissions user for admin:', user ? { id: user.id, email: user.email, company: user.company?.id } : 'null');
-          } catch (adminError) {
-            console.log('⚠️ Not an admin JWT, trying users-permissions JWT...');
+            const adminEmail = adminPayload?.email || adminPayload?.user?.email;
+            console.log('🔍 Extracted admin email:', adminEmail);
             
-            // Try users-permissions JWT
+            if (adminEmail) {
+              const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+                filters: { email: adminEmail },
+                limit: 1,
+                populate: ['company']
+              });
+              user = users[0];
+              console.log('✅ Found users-permissions user for admin:', user?.email || 'null');
+            } else {
+              console.log('❌ No email found in admin JWT payload');
+            }
+                      } catch (adminError) {
+              console.log('⚠️ Admin JWT verification failed:', adminError.message);
+              console.log('⚠️ Trying users-permissions JWT...');
+              
+              // Try users-permissions JWT
             const userJwtService = strapi.plugins['users-permissions'].services.jwt;
             const userPayload = userJwtService.verify(token);
-            console.log('✅ Users-permissions JWT verified:', { id: userPayload.id });
+            console.log('🔍 Raw users-permissions JWT payload:', userPayload);
+            console.log('✅ Users-permissions JWT verified:', { id: userPayload?.id });
             
-            // Get user with company populated
-            const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
-              filters: { id: userPayload.id },
-              limit: 1,
-              populate: ['company']
-            });
-            user = users[0];
-            console.log('✅ Found users-permissions user:', user ? { id: user.id, email: user.email, company: user.company?.id } : 'null');
+            if (userPayload?.id) {
+              // Get user with company populated
+              const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+                filters: { id: userPayload.id },
+                limit: 1,
+                populate: ['company']
+              });
+              user = users[0];
+              console.log('✅ Found users-permissions user:', user?.email || 'null');
+            } else {
+              console.log('❌ No user ID found in users-permissions JWT payload');
+            }
           }
         } catch (authError) {
-          console.log('❌ Failed to authenticate manually:', authError.message);
+          console.log('❌ Manual authentication completely failed:', authError.message);
+          console.log('❌ Auth error details:', authError);
         }
       } else {
-        console.log('⚠️ No authorization header found');
+        console.log('⚠️ No authorization header found for fallback authentication');
       }
     }
     
