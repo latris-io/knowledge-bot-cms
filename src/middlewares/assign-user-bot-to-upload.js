@@ -13,7 +13,10 @@ module.exports = (config, { strapi }) => {
     console.log('🔍 Upload middleware called for:', ctx.request.method, ctx.request.url);
     
     // Only process POST requests to upload endpoints (exclude actions)
-    if (ctx.request.method !== 'POST' || !ctx.request.url.startsWith('/upload') || ctx.request.url.startsWith('/upload/actions')) {
+    const isUploadUrl = ctx.request.url.startsWith('/upload') || ctx.request.url.startsWith('/api/upload');
+    const isActionUrl = ctx.request.url.startsWith('/upload/actions') || ctx.request.url.startsWith('/api/upload/actions');
+    
+    if (ctx.request.method !== 'POST' || !isUploadUrl || isActionUrl) {
       console.log('⏭️ Skipping - not a POST upload request');
       return await next();
     }
@@ -225,31 +228,33 @@ module.exports = (config, { strapi }) => {
     if ((status === 201 || status === 200) && body) {
       let filesToProcess = [];
       
+      // Handle response format - check if wrapped by controller override
+      let actualBody = body;
+      if (body && typeof body === 'object' && body.data && !body.id) {
+        // Response was wrapped by controller override, extract the actual data
+        actualBody = body.data;
+        console.log('📦 Detected wrapped response format, extracting data');
+      }
+
       // Handle both array (new uploads) and single object (replacements) responses
-      if (Array.isArray(body)) {
-        filesToProcess = body;
-        console.log(`✅ Upload successful - processing ${body.length} file(s)`);
-      } else if (typeof body === 'object' && body.id) {
-        filesToProcess = [body];
+      if (Array.isArray(actualBody)) {
+        filesToProcess = actualBody;
+        console.log(`✅ Upload successful - processing ${actualBody.length} file(s)`);
+      } else if (typeof actualBody === 'object' && actualBody.id) {
+        filesToProcess = [actualBody];
         console.log(`✅ File replacement successful - processing 1 file`);
       } else {
         console.log('⚠️ Unexpected response format:', {
           status: status,
           dataType: typeof body,
           isArray: Array.isArray(body),
-          hasId: body?.id ? true : false
+          hasId: body?.id ? true : false,
+          hasData: body?.data ? true : false,
+          actualBodyType: typeof actualBody
         });
         return;
       }
       
-      // Add email notification toast message to response
-      const fileCount = filesToProcess.length;
-      const fileWord = fileCount === 1 ? 'file' : 'files';
-      
-      ctx.response.body = {
-        data: ctx.response.body,
-        message: `Your ${fileWord} will be processed and you'll receive an email notification when ready.`
-      };
       
       // Process each uploaded file
       for (const file of filesToProcess) {

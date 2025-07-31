@@ -14,6 +14,34 @@ module.exports = (plugin) => {
   // Note: Create and update events are now handled in assign-user-bot-to-upload.js middleware
   // Only delete events are handled here via service override
 
+
+  // Add notification message to upload response
+  const originalController = plugin.controllers['admin-upload'];
+  if (originalController && originalController.upload) {
+    const originalUploadMethod = originalController.upload;
+    plugin.controllers['admin-upload'].upload = async function(ctx) {
+      
+      // Call the original upload controller with proper binding
+      const result = await originalUploadMethod.call(originalController, ctx);
+      
+      // Add notification message to response
+      if (ctx.response.status === 201 && ctx.response.body) {
+        const files = Array.isArray(ctx.response.body) ? ctx.response.body : [ctx.response.body];
+        const fileCount = files.length;
+        const fileWord = fileCount === 1 ? 'file' : 'files';
+        
+        // Add notification message
+        ctx.response.body = {
+          data: ctx.response.body,
+          message: `Your ${fileWord} will be processed and you'll receive an email notification when ready.`
+        };
+      }
+      
+      return result;
+    };
+  }
+
+
   // Override the upload service to track file deletions ONLY
   const defaultUploadService = plugin.services.upload;
   

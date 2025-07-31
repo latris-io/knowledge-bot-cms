@@ -473,6 +473,97 @@ export default {
           });
         }
         
+        // Handle upload responses with toast notifications
+        if (url.includes('/upload') && response.status === 201) {
+          console.log('📤 [ADMIN APP] Upload success detected, checking for notification message...');
+          
+          // Clone the response to read it without consuming it
+          const clonedResponse = response.clone();
+          clonedResponse.json().then(data => {
+            if (data && data.message) {
+              console.log('📢 [ADMIN APP] Found upload message:', data.message);
+              
+              // Display persistent toast notification using Strapi's notification system
+              // This targets the global notification container
+              setTimeout(() => {
+                const event = new CustomEvent('strapi-notification', {
+                  detail: {
+                    type: 'success',
+                    message: data.message,
+                    timeout: 0  // Make persistent - requires manual dismissal
+                  }
+                });
+                window.dispatchEvent(event);
+                
+                // Fallback: Try to find and use Strapi's notification API if available
+                if (window.strapi && window.strapi.notification) {
+                  window.strapi.notification.success(data.message);
+                } else if (window.dispatchEvent) {
+                  // Create a persistent toast element as final fallback
+                  const toast = document.createElement('div');
+                  toast.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #28a745;
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 4px;
+                    z-index: 9999;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    font-size: 14px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    max-width: 400px;
+                    word-wrap: break-word;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                  `;
+                  
+                  // Create message and close button
+                  const messageSpan = document.createElement('span');
+                  messageSpan.textContent = data.message;
+                  messageSpan.style.marginRight = '10px';
+                  
+                  const closeButton = document.createElement('span');
+                  closeButton.innerHTML = '×';
+                  closeButton.style.cssText = `
+                    font-size: 18px;
+                    font-weight: bold;
+                    line-height: 1;
+                    cursor: pointer;
+                    opacity: 0.8;
+                    transition: opacity 0.2s;
+                  `;
+                  closeButton.onmouseover = () => closeButton.style.opacity = '1';
+                  closeButton.onmouseout = () => closeButton.style.opacity = '0.8';
+                  closeButton.onclick = () => {
+                    if (toast.parentNode) {
+                      toast.parentNode.removeChild(toast);
+                    }
+                  };
+                  
+                  toast.appendChild(messageSpan);
+                  toast.appendChild(closeButton);
+                  document.body.appendChild(toast);
+                  
+                  // Also allow clicking the entire toast to dismiss
+                  toast.onclick = (e) => {
+                    if (e.target === toast || e.target === messageSpan) {
+                      if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                      }
+                    }
+                  };
+                }
+              }, 100); // Small delay to ensure DOM is ready
+            }
+          }).catch(error => {
+            console.log('⚠️ [ADMIN APP] Could not parse upload response for notification:', error);
+          });
+        }
+        
         return response;
       };
       
