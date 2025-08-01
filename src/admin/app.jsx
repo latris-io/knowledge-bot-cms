@@ -577,5 +577,14 @@ export default {
     
     // Start the pure event-driven system
     setupRoleDetection();
+  },
+  
+  config: {
+    translations: {
+      en: {
+        'Auth.form.welcome.title': 'Hello Maggie!',
+        'Auth.form.welcome.subtitle': 'Welcome to your knowledge bot dashboard'
+      }
+    }
   }
 }; 
