@@ -107,6 +107,48 @@ export default {
   bootstrap(app) {
     console.log('🚀 [ADMIN APP] Bootstrap function called');
     
+    // Change browser tab title to match "Hello Maggie" theme and maintain it
+    const enforceCustomTitle = () => {
+      const customTitle = 'Hello Maggie!';
+      
+      // Set initial title
+      document.title = customTitle;
+      console.log('🎯 [ADMIN APP] Browser tab title set to:', customTitle);
+      
+      // Monitor for title changes using MutationObserver
+      const titleObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'childList' && document.title !== customTitle) {
+            console.log('🔄 [ADMIN APP] Title changed from:', document.title, 'back to:', customTitle);
+            document.title = customTitle;
+          }
+        });
+      });
+      
+      // Start observing the document title
+      const titleElement = document.querySelector('title') || document.getElementsByTagName('title')[0];
+      if (titleElement) {
+        titleObserver.observe(titleElement, {
+          childList: true,
+          characterData: true,
+          subtree: true
+        });
+      }
+      
+      // Fallback: periodic check every 500ms in case MutationObserver misses something
+      setInterval(() => {
+        if (document.title !== customTitle) {
+          console.log('🔄 [ADMIN APP] Periodic title check - restoring:', customTitle);
+          document.title = customTitle;
+        }
+      }, 500);
+      
+      console.log('✅ [ADMIN APP] Title enforcement system active');
+    };
+    
+    // Activate title enforcement
+    enforceCustomTitle();
+    
     // Inject registration extension script
     const injectRegistrationExtension = () => {
       console.log('📝 [ADMIN APP] Injecting registration extension script...');
