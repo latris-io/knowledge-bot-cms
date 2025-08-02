@@ -58,6 +58,10 @@ module.exports = [
   'strapi::favicon',
   'strapi::public',
   {
+    name: 'global::custom-oops-page',
+    config: {}
+  },
+  {
     name: 'global::admin-registration-extension',
     config: {}
   },

@@ -38,6 +38,97 @@
     'netscape.net', 'aim.com', 'inbox.com', 'mail2world.com'
   ];
 
+  // 🎯 PERSISTENT TOAST MESSAGE SYSTEM
+  // Creates centered, persistent toast messages instead of browser alerts
+  function showPersistentToast(message, type = 'info', onClose = null) {
+    console.log(`🍞 [TOAST] Showing ${type} toast:`, message);
+    
+    // Remove any existing toast
+    const existingToast = document.getElementById('registration-toast');
+    if (existingToast) {
+      existingToast.remove();
+    }
+    
+    // Create toast container
+    const toast = document.createElement('div');
+    toast.id = 'registration-toast';
+    toast.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: ${type === 'success' ? '#d4edda' : '#f8d7da'};
+      color: ${type === 'success' ? '#155724' : '#721c24'};
+      border: 2px solid ${type === 'success' ? '#c3e6cb' : '#f5c6cb'};
+      border-radius: 8px;
+      padding: 20px 30px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      z-index: 10000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      text-align: center;
+      backdrop-filter: blur(10px);
+    `;
+    
+    // Create message content (preserve line breaks)
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = `
+      white-space: pre-line;
+      margin-bottom: 15px;
+    `;
+    messageDiv.textContent = message;
+    
+    // Create close button
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Close';
+    closeButton.style.cssText = `
+      background: ${type === 'success' ? '#28a745' : '#dc3545'};
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    `;
+    
+    // Add hover effect
+    closeButton.onmouseover = () => {
+      closeButton.style.background = type === 'success' ? '#218838' : '#c82333';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.background = type === 'success' ? '#28a745' : '#dc3545';
+    };
+    
+    // Close functionality with optional callback
+    closeButton.onclick = () => {
+      toast.remove();
+      console.log('🍞 [TOAST] Toast dismissed by user');
+      
+      // Execute callback if provided
+      if (onClose && typeof onClose === 'function') {
+        console.log('🔄 [TOAST] Executing onClose callback');
+        onClose();
+      }
+    };
+    
+    // Add content to toast
+    toast.appendChild(messageDiv);
+    toast.appendChild(closeButton);
+    
+    // Add toast to page
+    document.body.appendChild(toast);
+    
+    // Auto-focus close button for accessibility
+    setTimeout(() => closeButton.focus(), 100);
+    
+    console.log('🍞 [TOAST] Persistent toast displayed');
+  }
+
   // Check if we're on the registration page
   function isRegistrationPage() {
     const url = window.location.href;
@@ -587,17 +678,17 @@
       const result = await response.json();
 
       if (response.ok) {
-        // Show simple success message
-        if (result.emailVerificationRequired) {
-          alert(`✅ Account created successfully!\n\n📧 We've sent you an email with your account details and verification link.\n\n🔍 DEVELOPMENT MODE: Check the server console for full account information.\n\n⚠️ You must verify your email before you can log in.`);
-        } else {
-          alert(`✅ Admin account created successfully!\n\nCheck your email for login instructions.`);
-        }
+        // Show success toast message with redirect callback
+        const redirectToLogin = () => {
+          console.log('🔄 [REGISTRATION] Redirecting to login page...');
+          window.location.href = '/admin/auth/login';
+        };
 
-        // Redirect to login after a brief delay
-        setTimeout(() => {
-        window.location.href = '/admin/auth/login';
-        }, 1000);
+        if (result.emailVerificationRequired) {
+          showPersistentToast(`✅ Account created successfully!\n\n📧 We've sent you an email with your account details and verification link.\n\n⚠️ You must verify your email before you can log in.`, 'success', redirectToLogin);
+        } else {
+          showPersistentToast(`✅ Admin account created successfully!\n\nCheck your email for login instructions.`, 'success', redirectToLogin);
+        }
       } else {
         console.error('❌ Registration failed:', result);
         
@@ -644,7 +735,7 @@
           errorMessage = `❌ Registration failed: ${JSON.stringify(result)}`;
         }
         
-        alert(errorMessage);
+        showPersistentToast(errorMessage, 'error');
       }
     } catch (error) {
       console.error('❌ Registration error:', error);
@@ -660,7 +751,7 @@
         errorMessage = '❌ Registration failed due to an unexpected error. Please try again.';
       }
       
-      alert(errorMessage);
+      showPersistentToast(errorMessage, 'error');
     } finally {
       // Re-enable submit button
       if (submitButton) {

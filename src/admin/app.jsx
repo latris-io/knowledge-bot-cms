@@ -105,8 +105,40 @@ export default {
   },
   
   bootstrap(app) {
-    console.log('🚀 [ADMIN APP] Bootstrap function called');
+    console.log('🚀 [ADMIN APP] Bootstrap starting...');
     
+    // Change browser tab title to match "Hello Maggie" theme and maintain it
+    const enforceCustomTitle = () => {
+      const customTitle = 'Hello Maggie!';
+      
+      // Set initial title
+      document.title = customTitle;
+      console.log('🎯 [ADMIN APP] Browser tab title set to:', customTitle);
+      
+      // Monitor for title changes using MutationObserver (event-driven, no timers)
+      const titleObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'childList' && document.title !== customTitle) {
+            console.log('🔄 [ADMIN APP] Title changed from:', document.title, 'back to:', customTitle);
+            document.title = customTitle;
+          }
+        });
+      });
+      
+      // Start observing the document head for title changes
+      const head = document.querySelector('head');
+      if (head) {
+        titleObserver.observe(head, {
+          childList: true,
+          subtree: true
+        });
+        console.log('✅ [ADMIN APP] Title enforcement system active');
+      }
+    };
+    
+    // Apply title enforcement
+    enforceCustomTitle();
+
     // Inject registration extension script
     const injectRegistrationExtension = () => {
       console.log('📝 [ADMIN APP] Injecting registration extension script...');
@@ -562,6 +594,15 @@ export default {
           }).catch(error => {
             console.log('⚠️ [ADMIN APP] Could not parse upload response for notification:', error);
           });
+        }
+        
+        // Handle failed login attempts (blocked/unverified accounts)
+        if (url.includes('/admin/login') && response.status === 400) {
+          console.log('🚫 [ADMIN APP] Failed login detected, redirecting to custom oops page...');
+          // Small delay to ensure any pending navigation is complete
+          setTimeout(() => {
+            window.location.href = '/admin/auth/oops';
+          }, 100);
         }
         
         return response;
