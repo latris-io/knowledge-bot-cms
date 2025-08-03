@@ -707,6 +707,7 @@ export default {
           // Create our widget with the EXACT same structure as existing widgets
           const knowledgeBotWidget = document.createElement('div');
           knowledgeBotWidget.className = referenceClasses; // Use exact same classes as existing widgets
+          knowledgeBotWidget.style.gridColumn = '1 / -1'; // Override to span full width (100%)
           knowledgeBotWidget.innerHTML = `
             <section aria-labelledby="knowledge-bot-section" class="sc-Qotzb jIPnju sc-fYsHOw hikkEh" id="knowledge-bot-instructions">
               <header class="sc-Qotzb bNXmCQ sc-fYsHOw bfLXnz">
