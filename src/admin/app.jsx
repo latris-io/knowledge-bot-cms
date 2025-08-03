@@ -443,8 +443,20 @@ export default {
             hideDashboardWidgets();
             
             // Apply additional Standard User customizations
-            replaceGettingStartedForStandardUsers();
-            setupMediaLibraryControls();
+            // 🎯 DASHBOARD-ONLY: Only add 3-step instructions on dashboard
+            const currentPath = window.location.pathname;
+            if (currentPath === '/admin' || currentPath === '/admin/' || currentPath.endsWith('/admin')) {
+              console.log('📍 [ADMIN APP] On dashboard page - adding Standard User instructions');
+              replaceGettingStartedForStandardUsers();
+            } else {
+              console.log('📍 [ADMIN APP] Not on dashboard - skipping Standard User instructions');
+            }
+            
+            // 🎯 MEDIA LIBRARY ONLY: Only add media library controls on upload pages
+            if (currentPath.includes('/admin/plugins/upload')) {
+              console.log('📍 [ADMIN APP] On media library page - setting up controls');
+              setupMediaLibraryControls();
+            }
           } else {
             console.log('✅ [ADMIN APP] Not a Standard User - all menu items remain visible');
           }
@@ -624,6 +636,19 @@ export default {
     const replaceGettingStartedForStandardUsers = () => {
       console.log('🎯 [ADMIN APP] Replacing getting started section for Standard Users...');
       
+      // 🎯 ONLY RUN ON DASHBOARD: Check if we're on the dashboard/home page
+      const isDashboardPage = () => {
+        const url = window.location.pathname;
+        return url === '/admin' || url === '/admin/' || url.endsWith('/admin');
+      };
+      
+      if (!isDashboardPage()) {
+        console.log('⏭️ [ADMIN APP] Not on dashboard page, skipping 3-step instructions');
+        return;
+      }
+      
+      console.log('✅ [ADMIN APP] On dashboard page, proceeding with 3-step instructions');
+      
       // Add a processing flag to prevent multiple simultaneous executions
       let isGettingStartedProcessing = false;
       
@@ -641,130 +666,125 @@ export default {
         
         isGettingStartedProcessing = true;
 
-        // Target the specific widget container: div.sc-Qotzb.jopkZf.sc-dNHLo.jxLlKu
-        const widgetContainer = document.querySelector('div.sc-Qotzb.jopkZf.sc-dNHLo.jxLlKu');
-
-        if (widgetContainer) {
-          console.log('✅ [ADMIN APP] Found widget container, adding Knowledge Bot instructions');
-
-          // Create a proper widget section with the same structure as other widgets
-          const knowledgeBotWidget = `
-            <div class="sc-Qotzb jopkZf sc-fYsHOw bwvkd sc-ezFGlN niNim" style="grid-column: 1 / -1; width: 100%; min-height: 720px;">
-              <section aria-labelledby="knowledge-bot-section" class="sc-Qotzb hEFnkl sc-fYsHOw gHOWLG" id="knowledge-bot-instructions" style="width: 100%; min-height: 720px;">
-                <header class="sc-Qotzb jopkZf sc-fYsHOw gwFenY">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="16" height="16" fill="#8e8ea9" aria-hidden="true">
-                    <path d="M16 2C8.269 2 2 8.269 2 16s6.269 14 14 14 14-6.269 14-14S23.731 2 16 2zm0 25c-6.065 0-11-4.935-11-11S9.935 5 16 5s11 4.935 11 11-4.935 11-11 11z"></path>
-                    <path d="M16 8c-.552 0-1 .448-1 1v6c0 .552.448 1 1 1s1-.448 1-1V9c0-.552-.448-1-1-1z"></path>
-                    <circle cx="16" cy="21" r="1"></circle>
-                  </svg>
-                  <h2 id="knowledge-bot-section" class="sc-Qotzb jopkZf sc-dKREkF iLMmAl">🤖 Your Knowledge Bot Journey</h2>
-                </header>
-                <main class="sc-Qotzb fnqwiJ" style="width: 100%; min-height: 680px;">
-                  <div style="padding: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; width: 100%; box-sizing: border-box; min-height: 640px;">
-                    <h3 style="color: white; margin: 0 0 32px 0; font-size: 28px; font-weight: bold; text-align: center;">
-                      Hello Maggie! Let's get started in 3 easy steps:
-                    </h3>
-                    
-                    <div style="display: grid; gap: 32px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); width: 100%;">
-                      
-                      <!-- Step 1: Create a Bot -->
-                      <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 32px; border: 1px solid rgba(255,255,255,0.2);">
-                        <div style="display: flex; align-items: center; margin-bottom: 20px;">
-                          <div style="background: rgba(255,255,255,0.2); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 16px; font-weight: bold; font-size: 18px;">1</div>
-                          <h4 style="color: white; margin: 0; font-size: 20px; font-weight: bold;">🤖 Create Your Bot</h4>
-                        </div>
-                        <p style="color: rgba(255,255,255,0.9); margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">
-                          Start by creating your first Knowledge Bot with a descriptive name. Your bot will be the foundation for organizing and accessing your information.
-                        </p>
-                        <a href="/admin/bot-management" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.2); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); font-size: 16px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                          Create Bot →
-                        </a>
-                      </div>
-
-                      <!-- Step 2: Upload Your Files -->
-                      <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 32px; border: 1px solid rgba(255,255,255,0.2);">
-                        <div style="display: flex; align-items: center; margin-bottom: 20px;">
-                          <div style="background: rgba(255,255,255,0.2); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 16px; font-weight: bold; font-size: 18px;">2</div>
-                          <h4 style="color: white; margin: 0; font-size: 20px; font-weight: bold;">📁 Upload Your Files</h4>
-                        </div>
-                        <p style="color: rgba(255,255,255,0.9); margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">
-                          Feed your bot knowledge! Upload documents, images, or other files to the Media Library and assign them to your bot's folder.
-                        </p>
-                        <a href="/admin/plugins/upload" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.2); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); font-size: 16px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                          Upload Files →
-                        </a>
-                      </div>
-
-                      <!-- Step 3: Start AI Chat -->
-                      <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 32px; border: 1px solid rgba(255,255,255,0.2);">
-                        <div style="display: flex; align-items: center; margin-bottom: 20px;">
-                          <div style="background: rgba(255,255,255,0.2); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 16px; font-weight: bold; font-size: 18px;">3</div>
-                          <h4 style="color: white; margin: 0; font-size: 20px; font-weight: bold;">💬 Start AI Chat</h4>
-                        </div>
-                        <p style="color: rgba(255,255,255,0.9); margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">
-                          Engage with your bot! Head to the AI Chat and start asking questions based on the files you've uploaded.
-                        </p>
-                        <a href="/admin/ai-chat" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.2); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); font-size: 16px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                          Start Chatting →
-                        </a>
-                      </div>
-                    </div>
-
-                    <div style="margin-top: 40px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.3);">
-                      <h4 style="color: white; margin: 0 0 12px 0; font-size: 18px;">💡 Pro Tip: Organize Your Bots!</h4>
-                      <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6;">
-                        You can create multiple bots for different topics or projects. Each bot can have its own set of uploaded files, keeping your knowledge base neatly organized.
-                      </p>
-                    </div>
-                  </div>
-                </main>
-              </section>
-            </div>
-          `;
+        // 🎯 ZERO HARD-CODING: Find existing widgets and replicate their structure
+        const findWidgetContainer = () => {
+          // Look for existing dashboard widgets by their semantic content
+          const existingWidgets = document.querySelectorAll('section');
           
-          try {
-            // First attempt: Try to replace the original "3 steps to get started" section if it exists
-            const targetHeading = Array.from(document.querySelectorAll('h2')).find(h2 =>
-              h2.textContent?.includes('3 steps to get started') ||
-              h2.textContent?.includes('steps to get started')
-            );
-
-            if (targetHeading) {
-              const containerToReplace = targetHeading.closest('div[class*="sc-"]') || targetHeading.parentElement;
-              if (containerToReplace && containerToReplace.parentElement && !containerToReplace.hasAttribute('data-knowledge-bot-replaced')) {
-                console.log('✅ [ADMIN APP] Found original getting started section, replacing it.');
-                containerToReplace.setAttribute('data-knowledge-bot-replaced', 'true');
-                containerToReplace.outerHTML = knowledgeBotWidget;
-                isGettingStartedProcessing = false;
-                return; // Stop here if successfully replaced
+          for (const section of existingWidgets) {
+            const header = section.querySelector('header h2');
+            if (header && (
+              header.textContent?.includes('Last edited entries') || 
+              header.textContent?.includes('Last published entries')
+            )) {
+              console.log(`✅ [ADMIN APP] Found existing widget: "${header.textContent}"`);
+              // Get the parent container of this widget
+              const widgetContainer = section.parentElement;
+              const widgetGroupContainer = widgetContainer?.parentElement;
+              
+              if (widgetGroupContainer) {
+                console.log('✅ [ADMIN APP] Found widget group container by following existing widget structure');
+                return {
+                  container: widgetGroupContainer,
+                  referenceWidget: widgetContainer
+                };
               }
             }
-
-            // Second attempt: Add to the widget container directly
-            if (widgetContainer && widgetContainer.parentElement && !document.getElementById('knowledge-bot-instructions')) {
-              console.log('⚠️ [DEBUG] No "3 steps" section found, adding Knowledge Bot instructions to widget container...');
-              widgetContainer.insertAdjacentHTML('beforeend', knowledgeBotWidget);
-              console.log('✅ [ADMIN APP] Knowledge Bot instructions added to widget container');
-              isGettingStartedProcessing = false;
-              return;
-            }
-
-            // Final fallback: Try to add to a stable parent container
-            const stableContainer = document.querySelector('main[role="main"]') || document.querySelector('main') || document.body;
-            if (stableContainer && !document.getElementById('knowledge-bot-instructions')) {
-              console.log('⚠️ [DEBUG] Using fallback container for Knowledge Bot instructions...');
-              stableContainer.insertAdjacentHTML('beforeend', `
-                <div style="padding: 24px; margin: 24px;">
-                  ${knowledgeBotWidget}
-                </div>
-              `);
-              console.log('✅ [ADMIN APP] Knowledge Bot instructions added to fallback container');
-            }
-          } catch (e) {
-            console.error('❌ [ADMIN APP] Error adding Knowledge Bot instructions:', e);
           }
+          
+          console.log('❌ [ADMIN APP] Could not find existing widgets to replicate structure');
+          return null;
+        };
+
+        const widgetInfo = findWidgetContainer();
+
+        if (widgetInfo) {
+          console.log('✅ [ADMIN APP] Found widget container, adding Knowledge Bot instructions');
+
+          // 🎯 REPLICATE EXACT STRUCTURE: Copy the classes from the reference widget
+          const referenceClasses = widgetInfo.referenceWidget.className;
+          
+          // Create our widget with the EXACT same structure as existing widgets
+          const knowledgeBotWidget = document.createElement('div');
+          knowledgeBotWidget.className = referenceClasses; // Use exact same classes as existing widgets
+          knowledgeBotWidget.innerHTML = `
+            <section aria-labelledby="knowledge-bot-section" class="sc-Qotzb jIPnju sc-fYsHOw hikkEh" id="knowledge-bot-instructions">
+              <header class="sc-Qotzb bNXmCQ sc-fYsHOw bfLXnz">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="16" height="16" fill="#8e8ea9" aria-hidden="true">
+                  <path d="M16 2C8.269 2 2 8.269 2 16s6.269 14 14 14 14-6.269 14-14S23.731 2 16 2zm0 25c-6.065 0-11-4.935-11-11S9.935 5 16 5s11 4.935 11 11-4.935 11-11 11z"></path>
+                  <path d="M16 8c-.552 0-1 .448-1 1v6c0 .552.448 1 1 1s1-.448 1-1V9c0-.552-.448-1-1-1z"></path>
+                  <circle cx="16" cy="21" r="1"></circle>
+                </svg>
+                <h2 id="knowledge-bot-section" class="sc-Qotzb bNXmCQ sc-dKREkF cCcMBD">🤖 Your Knowledge Bot Journey</h2>
+              </header>
+              <main class="sc-Qotzb dwIKpS">
+                <div style="padding: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                  <h3 style="color: white; margin: 0 0 32px 0; font-size: 28px; font-weight: bold; text-align: center;">
+                    Hello Maggie! Let's get started in 3 easy steps:
+                  </h3>
+                  
+                  <div style="display: grid; gap: 32px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                    
+                    <!-- Step 1: Create a Bot -->
+                    <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 32px; border: 1px solid rgba(255,255,255,0.2);">
+                      <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                        <div style="background: rgba(255,255,255,0.2); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 16px; font-weight: bold; font-size: 18px;">1</div>
+                        <h4 style="color: white; margin: 0; font-size: 20px; font-weight: bold;">🤖 Create Your Bot</h4>
+                      </div>
+                      <p style="color: rgba(255,255,255,0.9); margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">
+                        Start by creating your first Knowledge Bot with a descriptive name. Your bot will be the foundation for organizing and accessing your information.
+                      </p>
+                      <a href="/admin/bot-management" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.2); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); font-size: 16px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                        Create Bot →
+                      </a>
+                    </div>
+
+                    <!-- Step 2: Upload Your Files -->
+                    <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 32px; border: 1px solid rgba(255,255,255,0.2);">
+                      <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                        <div style="background: rgba(255,255,255,0.2); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 16px; font-weight: bold; font-size: 18px;">2</div>
+                        <h4 style="color: white; margin: 0; font-size: 20px; font-weight: bold;">📁 Upload Your Files</h4>
+                      </div>
+                      <p style="color: rgba(255,255,255,0.9); margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">
+                        Feed your bot knowledge! Upload documents, images, or other files to the Media Library and assign them to your bot's folder.
+                      </p>
+                      <a href="/admin/plugins/upload" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.2); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); font-size: 16px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                        Upload Files →
+                      </a>
+                    </div>
+
+                    <!-- Step 3: Start AI Chat -->
+                    <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 32px; border: 1px solid rgba(255,255,255,0.2);">
+                      <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                        <div style="background: rgba(255,255,255,0.2); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 16px; font-weight: bold; font-size: 18px;">3</div>
+                        <h4 style="color: white; margin: 0; font-size: 20px; font-weight: bold;">💬 Start AI Chat</h4>
+                      </div>
+                      <p style="color: rgba(255,255,255,0.9); margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">
+                        Engage with your bot! Head to the AI Chat and start asking questions based on the files you've uploaded.
+                      </p>
+                      <a href="/admin/ai-chat" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.2); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); font-size: 16px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                        Start Chatting →
+                      </a>
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 40px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.3);">
+                    <h4 style="color: white; margin: 0 0 12px 0; font-size: 18px;">💡 Pro Tip: Organize Your Bots!</h4>
+                    <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6;">
+                      You can create multiple bots for different topics or projects. Each bot can have its own set of uploaded files, keeping your knowledge base neatly organized.
+                    </p>
+                  </div>
+                </div>
+              </main>
+            </section>
+          `;
+          
+          // Insert as a sibling to existing widgets (which are now hidden for Standard Users)
+          widgetInfo.container.appendChild(knowledgeBotWidget);
+          console.log('✅ [ADMIN APP] Knowledge Bot instructions added as sibling to existing widgets using their exact structure');
+          
         } else {
-          console.log('❌ [ADMIN APP] Widget container not found, instructions not added.');
+          console.log('❌ [ADMIN APP] Could not find existing widgets to replicate structure');
         }
         
         isGettingStartedProcessing = false;
@@ -795,6 +815,14 @@ export default {
     // Simple and safe implementation
     const setupMediaLibraryControls = () => {
       console.log('📁 [ADMIN APP] Setting up Media Library controls...');
+      
+      // 🎯 ONLY RUN ON MEDIA LIBRARY: Double-check we're on the media library page
+      if (!window.location.pathname.includes('/admin/plugins/upload')) {
+        console.log('⏭️ [ADMIN APP] Not on media library page, skipping controls setup');
+        return;
+      }
+      
+      console.log('✅ [ADMIN APP] On media library page, proceeding with controls setup');
       
       const applyMediaLibraryControls = () => {
         // Only apply on Media Library pages
