@@ -138,7 +138,7 @@ export default {
     
     // Apply title enforcement
     enforceCustomTitle();
-
+    
     // Inject registration extension script
     const injectRegistrationExtension = () => {
       console.log('📝 [ADMIN APP] Injecting registration extension script...');
@@ -337,8 +337,7 @@ export default {
               
               const isStandardUser = userRoles.some(role => 
                 role.name === 'Standard User' || 
-                role.code === 'standard-user' ||
-                role.name?.toLowerCase().includes('standard')
+                role.code === 'standard-user'
               );
               
               console.log(`🎯 [ADMIN APP] Is Standard User: ${isStandardUser}`);
@@ -442,6 +441,10 @@ export default {
             
             // Also hide dashboard widgets for Standard Users
             hideDashboardWidgets();
+            
+            // Apply additional Standard User customizations
+            replaceGettingStartedForStandardUsers();
+            setupMediaLibraryControls();
           } else {
             console.log('✅ [ADMIN APP] Not a Standard User - all menu items remain visible');
           }
@@ -528,8 +531,8 @@ export default {
                 window.dispatchEvent(event);
                 
                 // Fallback: Try to find and use Strapi's notification API if available
-                if (window.strapi && window.strapi.notification) {
-                  window.strapi.notification.success(data.message);
+                if (window.strapi && window.strapi['notification']) {
+                  window.strapi['notification'].success(data.message);
                 } else if (window.dispatchEvent) {
                   // Create a persistent toast element as final fallback
                   const toast = document.createElement('div');
@@ -616,8 +619,263 @@ export default {
       console.log('👀 [ADMIN APP] Pure event-driven role detection set up - NO TIMERS');
     };
     
+    // 🎯 REPLACE GETTING STARTED SECTION FOR STANDARD USERS
+    // Replaces the default "3 steps to get started" with Knowledge Bot-specific steps
+    const replaceGettingStartedForStandardUsers = () => {
+      console.log('🎯 [ADMIN APP] Replacing getting started section for Standard Users...');
+      
+      // Add a processing flag to prevent multiple simultaneous executions
+      let isGettingStartedProcessing = false;
+      
+      const safelyAddInstructions = () => {
+        // Check if already added
+        if (document.getElementById('knowledge-bot-instructions')) {
+          console.log('⚠️ [DEBUG] Knowledge Bot instructions already exist, skipping');
+          return;
+        }
+        
+        if (isGettingStartedProcessing) {
+          console.log('⚠️ [DEBUG] Getting started processing already in progress, skipping');
+          return;
+        }
+        
+        isGettingStartedProcessing = true;
+
+        // Target the specific widget container: div.sc-Qotzb.jopkZf.sc-dNHLo.jxLlKu
+        const widgetContainer = document.querySelector('div.sc-Qotzb.jopkZf.sc-dNHLo.jxLlKu');
+
+        if (widgetContainer) {
+          console.log('✅ [ADMIN APP] Found widget container, adding Knowledge Bot instructions');
+
+          // Create a proper widget section with the same structure as other widgets
+          const knowledgeBotWidget = `
+            <div class="sc-Qotzb jopkZf sc-fYsHOw bwvkd sc-ezFGlN niNim" style="grid-column: 1 / -1; width: 100%; min-height: 720px;">
+              <section aria-labelledby="knowledge-bot-section" class="sc-Qotzb hEFnkl sc-fYsHOw gHOWLG" id="knowledge-bot-instructions" style="width: 100%; min-height: 720px;">
+                <header class="sc-Qotzb jopkZf sc-fYsHOw gwFenY">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="16" height="16" fill="#8e8ea9" aria-hidden="true">
+                    <path d="M16 2C8.269 2 2 8.269 2 16s6.269 14 14 14 14-6.269 14-14S23.731 2 16 2zm0 25c-6.065 0-11-4.935-11-11S9.935 5 16 5s11 4.935 11 11-4.935 11-11 11z"></path>
+                    <path d="M16 8c-.552 0-1 .448-1 1v6c0 .552.448 1 1 1s1-.448 1-1V9c0-.552-.448-1-1-1z"></path>
+                    <circle cx="16" cy="21" r="1"></circle>
+                  </svg>
+                  <h2 id="knowledge-bot-section" class="sc-Qotzb jopkZf sc-dKREkF iLMmAl">🤖 Your Knowledge Bot Journey</h2>
+                </header>
+                <main class="sc-Qotzb fnqwiJ" style="width: 100%; min-height: 680px;">
+                  <div style="padding: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; width: 100%; box-sizing: border-box; min-height: 640px;">
+                    <h3 style="color: white; margin: 0 0 32px 0; font-size: 28px; font-weight: bold; text-align: center;">
+                      Hello Maggie! Let's get started in 3 easy steps:
+                    </h3>
+                    
+                    <div style="display: grid; gap: 32px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); width: 100%;">
+                      
+                      <!-- Step 1: Create a Bot -->
+                      <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 32px; border: 1px solid rgba(255,255,255,0.2);">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                          <div style="background: rgba(255,255,255,0.2); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 16px; font-weight: bold; font-size: 18px;">1</div>
+                          <h4 style="color: white; margin: 0; font-size: 20px; font-weight: bold;">🤖 Create Your Bot</h4>
+                        </div>
+                        <p style="color: rgba(255,255,255,0.9); margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">
+                          Start by creating your first Knowledge Bot with a descriptive name. Your bot will be the foundation for organizing and accessing your information.
+                        </p>
+                        <a href="/admin/bot-management" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.2); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); font-size: 16px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                          Create Bot →
+                        </a>
+                      </div>
+
+                      <!-- Step 2: Upload Your Files -->
+                      <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 32px; border: 1px solid rgba(255,255,255,0.2);">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                          <div style="background: rgba(255,255,255,0.2); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 16px; font-weight: bold; font-size: 18px;">2</div>
+                          <h4 style="color: white; margin: 0; font-size: 20px; font-weight: bold;">📁 Upload Your Files</h4>
+                        </div>
+                        <p style="color: rgba(255,255,255,0.9); margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">
+                          Feed your bot knowledge! Upload documents, images, or other files to the Media Library and assign them to your bot's folder.
+                        </p>
+                        <a href="/admin/plugins/upload" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.2); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); font-size: 16px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                          Upload Files →
+                        </a>
+                      </div>
+
+                      <!-- Step 3: Start AI Chat -->
+                      <div style="background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border-radius: 10px; padding: 32px; border: 1px solid rgba(255,255,255,0.2);">
+                        <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                          <div style="background: rgba(255,255,255,0.2); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 16px; font-weight: bold; font-size: 18px;">3</div>
+                          <h4 style="color: white; margin: 0; font-size: 20px; font-weight: bold;">💬 Start AI Chat</h4>
+                        </div>
+                        <p style="color: rgba(255,255,255,0.9); margin: 0 0 20px 0; font-size: 16px; line-height: 1.6;">
+                          Engage with your bot! Head to the AI Chat and start asking questions based on the files you've uploaded.
+                        </p>
+                        <a href="/admin/ai-chat" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.2); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; border: 1px solid rgba(255,255,255,0.3); font-size: 16px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                          Start Chatting →
+                        </a>
+                      </div>
+                    </div>
+
+                    <div style="margin-top: 40px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.3);">
+                      <h4 style="color: white; margin: 0 0 12px 0; font-size: 18px;">💡 Pro Tip: Organize Your Bots!</h4>
+                      <p style="color: rgba(255,255,255,0.8); font-size: 15px; line-height: 1.6;">
+                        You can create multiple bots for different topics or projects. Each bot can have its own set of uploaded files, keeping your knowledge base neatly organized.
+                      </p>
+                    </div>
+                  </div>
+                </main>
+              </section>
+            </div>
+          `;
+          
+          try {
+            // First attempt: Try to replace the original "3 steps to get started" section if it exists
+            const targetHeading = Array.from(document.querySelectorAll('h2')).find(h2 =>
+              h2.textContent?.includes('3 steps to get started') ||
+              h2.textContent?.includes('steps to get started')
+            );
+
+            if (targetHeading) {
+              const containerToReplace = targetHeading.closest('div[class*="sc-"]') || targetHeading.parentElement;
+              if (containerToReplace && containerToReplace.parentElement && !containerToReplace.hasAttribute('data-knowledge-bot-replaced')) {
+                console.log('✅ [ADMIN APP] Found original getting started section, replacing it.');
+                containerToReplace.setAttribute('data-knowledge-bot-replaced', 'true');
+                containerToReplace.outerHTML = knowledgeBotWidget;
+                isGettingStartedProcessing = false;
+                return; // Stop here if successfully replaced
+              }
+            }
+
+            // Second attempt: Add to the widget container directly
+            if (widgetContainer && widgetContainer.parentElement && !document.getElementById('knowledge-bot-instructions')) {
+              console.log('⚠️ [DEBUG] No "3 steps" section found, adding Knowledge Bot instructions to widget container...');
+              widgetContainer.insertAdjacentHTML('beforeend', knowledgeBotWidget);
+              console.log('✅ [ADMIN APP] Knowledge Bot instructions added to widget container');
+              isGettingStartedProcessing = false;
+              return;
+            }
+
+            // Final fallback: Try to add to a stable parent container
+            const stableContainer = document.querySelector('main[role="main"]') || document.querySelector('main') || document.body;
+            if (stableContainer && !document.getElementById('knowledge-bot-instructions')) {
+              console.log('⚠️ [DEBUG] Using fallback container for Knowledge Bot instructions...');
+              stableContainer.insertAdjacentHTML('beforeend', `
+                <div style="padding: 24px; margin: 24px;">
+                  ${knowledgeBotWidget}
+                </div>
+              `);
+              console.log('✅ [ADMIN APP] Knowledge Bot instructions added to fallback container');
+            }
+          } catch (e) {
+            console.error('❌ [ADMIN APP] Error adding Knowledge Bot instructions:', e);
+          }
+        } else {
+          console.log('❌ [ADMIN APP] Widget container not found, instructions not added.');
+        }
+        
+        isGettingStartedProcessing = false;
+      };
+
+      // Use MutationObserver to catch when the content loads or changes
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'childList') {
+            safelyAddInstructions();
+          }
+        });
+      });
+
+      // Start observing the document body for changes
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+
+      // Initial check
+      safelyAddInstructions();
+
+      console.log('✅ [ADMIN APP] MutationObserver for getting started section active');
+    };
+
+    // 🎯 SETUP MEDIA LIBRARY CONTROLS FOR STANDARD USERS
+    // Simple and safe implementation
+    const setupMediaLibraryControls = () => {
+      console.log('📁 [ADMIN APP] Setting up Media Library controls...');
+      
+      const applyMediaLibraryControls = () => {
+        // Only apply on Media Library pages
+        if (!window.location.pathname.includes('/admin/plugins/upload')) {
+          return;
+        }
+        
+        const currentUrl = window.location.href;
+        const hasFolder = currentUrl.includes('folder');
+        
+        console.log(`📁 [ADMIN APP] Media Library URL check - Has folder: ${hasFolder}`);
+        console.log(`📁 [ADMIN APP] Current URL: ${currentUrl}`);
+        
+        // Find all buttons on the page
+        const buttons = document.querySelectorAll('button');
+        
+        buttons.forEach(button => {
+          const buttonText = button.textContent || '';
+          
+          // Hide "Add new folder" button always
+          if (buttonText.includes('Add new folder')) {
+            button.style.display = 'none';
+            console.log('📁 [ADMIN APP] Hidden "Add new folder" button');
+          }
+          
+          // Control "Add new assets" button based on folder presence
+          if (buttonText.includes('Add new assets')) {
+            if (hasFolder) {
+              // URL has folder - ENABLE the button (inside folder, allow uploads)
+              button.disabled = false;
+              button.style.opacity = '1';
+              button.title = '';
+              console.log('📁 [ADMIN APP] Enabled "Add new assets" button (inside folder)');
+            } else {
+              // URL doesn't have folder - DISABLE the button (in root, don't allow uploads)
+              button.disabled = true;
+              button.style.opacity = '0.5';
+              button.title = 'Please select a folder first';
+              console.log('📁 [ADMIN APP] Disabled "Add new assets" button (in root)');
+            }
+          }
+        });
+      };
+      
+      // Apply on URL changes
+      const handleUrlChange = () => {
+        setTimeout(applyMediaLibraryControls, 100); // Small delay for DOM to update
+      };
+      
+      // Listen for navigation
+      window.addEventListener('popstate', handleUrlChange);
+      
+      // Override history methods to catch programmatic navigation  
+      const originalPushState = history.pushState;
+      history.pushState = function(...args) {
+        const result = originalPushState.apply(this, args);
+        handleUrlChange();
+        return result;
+      };
+      
+      // Use MutationObserver for dynamic content
+      const observer = new MutationObserver(() => {
+        if (window.location.pathname.includes('/admin/plugins/upload')) {
+          applyMediaLibraryControls();
+        }
+      });
+      
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+      
+      // Initial application
+      applyMediaLibraryControls();
+      
+      console.log('✅ [ADMIN APP] Media Library controls active');
+    };
+
     // Start the pure event-driven system
     setupRoleDetection();
+
   },
   
   config: {

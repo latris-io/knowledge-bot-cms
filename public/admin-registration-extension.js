@@ -681,7 +681,7 @@
         // Show success toast message with redirect callback
         const redirectToLogin = () => {
           console.log('🔄 [REGISTRATION] Redirecting to login page...');
-          window.location.href = '/admin/auth/login';
+        window.location.href = '/admin/auth/login';
         };
 
         if (result.emailVerificationRequired) {
