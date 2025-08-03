@@ -708,8 +708,10 @@ export default {
           const knowledgeBotWidget = document.createElement('div');
           knowledgeBotWidget.className = referenceClasses; // Use exact same classes as existing widgets
           knowledgeBotWidget.style.gridColumn = '1 / -1'; // Override to span full width (100%)
+          knowledgeBotWidget.style.height = 'auto'; // Make height dynamic based on content
+          knowledgeBotWidget.style.minHeight = 'auto'; // Remove any inherited min-height constraints
           knowledgeBotWidget.innerHTML = `
-            <section aria-labelledby="knowledge-bot-section" class="sc-Qotzb jIPnju sc-fYsHOw hikkEh" id="knowledge-bot-instructions">
+            <section aria-labelledby="knowledge-bot-section" class="sc-Qotzb jIPnju sc-fYsHOw hikkEh" id="knowledge-bot-instructions" style="height: auto; min-height: auto;">
               <header class="sc-Qotzb bNXmCQ sc-fYsHOw bfLXnz">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="16" height="16" fill="#8e8ea9" aria-hidden="true">
                   <path d="M16 2C8.269 2 2 8.269 2 16s6.269 14 14 14 14-6.269 14-14S23.731 2 16 2zm0 25c-6.065 0-11-4.935-11-11S9.935 5 16 5s11 4.935 11 11-4.935 11-11 11z"></path>
