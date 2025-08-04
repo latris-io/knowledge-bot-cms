@@ -720,8 +720,8 @@ export default {
                 </svg>
                 <h2 id="knowledge-bot-section" class="sc-Qotzb bNXmCQ sc-dKREkF cCcMBD">🤖 Your Knowledge Bot Journey</h2>
               </header>
-              <main class="sc-Qotzb dwIKpS">
-                <div style="padding: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+              <main class="sc-Qotzb dwIKpS" style="overflow: visible; max-height: none; height: auto;">
+                <div style="padding: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; overflow: visible; max-height: none;">
                   <h3 style="color: white; margin: 0 0 32px 0; font-size: 28px; font-weight: bold; text-align: center;">
                     Hello Maggie! Let's get started in 3 easy steps:
                   </h3>
