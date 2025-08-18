@@ -20,10 +20,10 @@ module.exports = ({ env }) => ({
   },
   // Inject our registration extension script
   serveAdminPanel: env.bool('SERVE_ADMIN', true),
-  // Custom head configuration for Hello Maggie branding
+      // Custom head configuration for HeyChat branding
   head: {
     // Custom title for link previews and browser tab
-    title: 'Hello Maggie!',
+    title: 'HeyChat!',
     // Custom favicon
     favicon: '/favicon.ico',
     // Scripts
@@ -36,23 +36,23 @@ module.exports = ({ env }) => ({
     // Open Graph and social media meta tags for link previews
     meta: [
       // Primary meta tags
-      { name: 'title', content: 'Hello Maggie!' },
+      { name: 'title', content: 'HeyChat!' },
       { name: 'description', content: 'Your personalized Knowledge Bot administration panel' },
       
       // Open Graph / Facebook
       { property: 'og:type', content: 'website' },
-      { property: 'og:title', content: 'Hello Maggie!' },
+      { property: 'og:title', content: 'HeyChat!' },
       { property: 'og:description', content: 'Your personalized Knowledge Bot administration panel' },
-      { property: 'og:site_name', content: 'Hello Maggie!' },
+      { property: 'og:site_name', content: 'HeyChat!' },
       
       // Twitter
       { name: 'twitter:card', content: 'summary' },
-      { name: 'twitter:title', content: 'Hello Maggie!' },
+      { name: 'twitter:title', content: 'HeyChat!' },
       { name: 'twitter:description', content: 'Your personalized Knowledge Bot administration panel' },
       
       // Additional meta tags
-      { name: 'application-name', content: 'Hello Maggie!' },
-      { name: 'apple-mobile-web-app-title', content: 'Hello Maggie!' },
+      { name: 'application-name', content: 'HeyChat!' },
+      { name: 'apple-mobile-web-app-title', content: 'HeyChat!' },
     ],
   },
 });

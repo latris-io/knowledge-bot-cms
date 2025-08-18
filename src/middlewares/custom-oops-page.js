@@ -22,7 +22,7 @@ module.exports = (config, { strapi }) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hello Maggie!</title>
+  <title>HeyChat!</title>
   <style>
     * {
       margin: 0;
@@ -104,7 +104,7 @@ module.exports = (config, { strapi }) => {
 <body>
   <div class="container">
     <div class="logo">M</div>
-    <h1>Hello Maggie!</h1>
+    <h1>HeyChat!</h1>
     <p>Your account is waiting for email verification. Please check your inbox and click the verification link to access your dashboard.</p>
     <a href="/admin/auth/login" class="button">Back to Login</a>
     <div class="footer">
